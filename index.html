@@ -411,7 +411,15 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 
     function refreshToday() {
       if (!hasServer) return Promise.resolve(false);
-      return getStats(today()).then(function (d) { todayStats = d; render(); return true; }, function () { return false; });
+      return getStats(today()).then(function (d) {
+        todayStats = d;
+        // 記下哪些自己的發車已經出現在伺服器上；之後伺服器沒有的（例如被管理者刪除）就不再顯示。
+        var ids = {}, changed = false;
+        d.departures.forEach(function (x) { ids[x.id] = true; });
+        history.forEach(function (h) { if (ids[h.id] && !h.seen) { h.seen = true; changed = true; } });
+        if (changed) LS.set("history", history);
+        render(); return true;
+      }, function () { return false; });
     }
     // 手機「往下拉」在 Google 外框裡沒有作用，所以頁面上放一個更新按鈕。
     $("#refreshBtn").addEventListener("click", function () {
@@ -432,13 +440,21 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
       var onServer = {};
       rows.forEach(function (r) { onServer[r.id] = true; });
       history.forEach(function (r) {
-        if (r.kind !== "arrive" && !onServer[r.id] && (!r.sent || (!todayStats && r.date === t))) rows.push(Object.assign({ arrive: "" }, r));
+        // 剛上傳、但手上的統計還沒包含的發車，也要照樣顯示，畫面才不會跳來跳去。
+        if (r.kind !== "arrive" && !onServer[r.id] && (!r.sent || (r.date === t && !r.seen))) rows.push(Object.assign({ arrive: "" }, r));
       });
-      rows.sort(function (a, b) { var x = a.date + a.time, y = b.date + b.time; return x < y ? 1 : x > y ? -1 : 0; });
+      // 新的在前；同一分鐘的用編號裡的毫秒時間決定先後。
+      var idMs = function (id) { var n = parseInt(String(id || "").slice(0, -5), 36); return isFinite(n) ? n : 0; };
+      rows.sort(function (a, b) {
+        var x = a.date + a.time, y = b.date + b.time;
+        return x < y ? 1 : x > y ? -1 : idMs(b.id) - idMs(a.id);
+      });
       // 這支手機記下、伺服器還沒顯示的抵達時間，套到那台車最近一次發車上。
-      history.filter(function (a) { return a.kind === "arrive" && a.date === t && (!a.sent || !todayStats); }).reverse().forEach(function (a) {
+      history.filter(function (a) { return a.kind === "arrive" && a.date === t; }).reverse().forEach(function (a) {
         var d = rows.filter(function (x) { return x.date === t && x.dir === a.dir && Number(x.bus) === Number(a.bus); })[0];
-        if (d) { d.arrive = a.time; d.arrivePending = !a.sent; }
+        // 只套用到這次抵達之前的那一班；伺服器已經有抵達時間就以伺服器為準。
+        var after = idMs(a.id) && idMs(d && d.id) ? idMs(a.id) >= idMs(d.id) : d && a.time >= d.time;
+        if (d && after && (!a.sent || !d.arrive)) { d.arrive = a.time; d.arrivePending = !a.sent; }
       });
       return rows;
     }
