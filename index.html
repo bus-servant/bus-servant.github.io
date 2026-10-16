@@ -133,6 +133,29 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .hist .arr{display:block;font-size:.85rem;font-weight:500;color:var(--ok)}
 .hist .arr.moving{color:var(--wait)}
 .go.arrive{background:var(--surface);color:var(--teal);border:2px solid var(--teal)}
+/* 步驟提示 */
+.stepbar{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;counter-reset:st}
+.stepbar li{counter-increment:st;display:flex;align-items:center;justify-content:center;gap:5px;font-size:.78rem;color:var(--muted);padding:6px 4px;border-radius:999px;background:var(--surface);border:1px solid var(--line);white-space:nowrap}
+.stepbar li::before{content:counter(st);width:18px;height:18px;flex:0 0 18px;border-radius:50%;display:grid;place-items:center;font-size:.72rem;line-height:1;background:var(--line);color:var(--ink);font-family:var(--num);padding-top:2px}
+.stepbar li.cur{background:var(--teal);color:var(--cream);border-color:var(--teal);font-weight:700}
+.stepbar li.cur::before{background:var(--cream);color:var(--teal)}
+.stepbar li.done{color:var(--teal)}
+.stepbar li.done::before{content:"✓";background:var(--teal);color:var(--cream);font-family:var(--body);padding-top:0}
+/* 行駛中卡片 */
+#goArea{display:flex;flex-direction:column;gap:10px}
+.trip{background:var(--banner);color:var(--cream);border-radius:16px;padding:14px 14px 16px;text-align:center;display:flex;flex-direction:column;gap:2px;
+  box-shadow:inset 0 0 0 7px var(--banner),inset 0 0 0 8px rgba(242,239,230,.35)}
+.trip .tlbl{font-size:.85rem;font-weight:300;letter-spacing:.35em;padding-left:.35em;color:var(--banner-ink)}
+.trip .tstate{font-size:1.5rem;font-weight:700;letter-spacing:.4em;padding-left:.4em;display:flex;align-items:center;justify-content:center;gap:10px}
+.trip .tstate::before{content:"";width:11px;height:11px;border-radius:50%;background:#F5C26B;box-shadow:0 0 0 0 rgba(245,194,107,.7);animation:pulse 1.6s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(245,194,107,.7)}70%{box-shadow:0 0 0 10px rgba(245,194,107,0)}100%{box-shadow:0 0 0 0 rgba(245,194,107,0)}}
+.trip .tclock{font-family:var(--num);line-height:1;margin-top:4px}
+.trip .tclock b{font-size:3.4rem;font-weight:600}
+.trip .tclock span{font-family:var(--body);font-size:.95rem;font-weight:300;letter-spacing:.2em;margin-left:6px}
+.trip .tmeta{font-size:.95rem;color:var(--banner-ink);font-variant-numeric:tabular-nums;margin-top:4px}
+.go.arrive-go{background:#2F7A4E;color:#F2EFE6;letter-spacing:.2em;padding-left:.2em}
+.linkbtn{align-self:center;border:0;background:none;color:var(--muted);text-decoration:underline;text-underline-offset:3px;font-size:.85rem;min-height:32px;padding:0 8px;cursor:pointer}
+@media (prefers-reduced-motion:reduce){.trip .tstate::before{animation:none}}
 .transit{margin:0 0 10px;text-align:center;color:var(--wait);font-weight:500;letter-spacing:.1em;background:var(--surface);border:2px dashed var(--wait);border-radius:14px;padding:12px;font-size:1rem;line-height:1.6}
 .transit b{display:block;font-size:1.3rem;letter-spacing:.2em}
 .hist .c{text-align:right;white-space:nowrap;font-weight:700}
@@ -231,6 +254,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   </div>
 
   <p class="event" id="eventLine" hidden></p>
+
+  <ol class="stepbar" id="stepBar" aria-label="步驟"><li>選車</li><li>數人數・發車</li><li>到站確認</li></ol>
 
   <section class="buses" id="busBox">
     <h2>選擇你負責的車</h2>
@@ -374,6 +399,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
         .api(req);
     });
   }
+  // 編號的前半段是建立時的毫秒時間（36 進位）。
+  var idMs = function (id) { var n = parseInt(String(id || "").slice(0, -5), 36); return isFinite(n) && n > 1e12 ? n : 0; };
   var getStats = function (date) { return run({ action: "stats", date: date }).then(function (r) { return r.data; }); };
 
   /* =================== 車長頁 =================== */
@@ -384,6 +411,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
     var sel = LS.get("sel", null);          // {date, dir, bus}，只在當天有效
     var todayStats = null;
     var asking = false, askingArrive = false, flushing = false, online = null, needPin = false;
+    var pickerOpen = false, isMoving = false;
     var today = function () { return dayKey(new Date()); };
     if (sel && sel.date !== today()) sel = null;
 
@@ -444,7 +472,6 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
         if (r.kind !== "arrive" && !onServer[r.id] && (!r.sent || (r.date === t && !r.seen))) rows.push(Object.assign({ arrive: "" }, r));
       });
       // 新的在前；同一分鐘的用編號裡的毫秒時間決定先後。
-      var idMs = function (id) { var n = parseInt(String(id || "").slice(0, -5), 36); return isFinite(n) ? n : 0; };
       rows.sort(function (a, b) {
         var x = a.date + a.time, y = b.date + b.time;
         return x < y ? 1 : x > y ? -1 : idMs(b.id) - idMs(a.id);
@@ -502,17 +529,31 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 
       var dup = sel ? departedOf(rows, sel.dir, sel.bus) : [];
       var moving = dup.length && !dup[0].arrive ? dup[0] : null;
+      isMoving = !!moving;
       var go = $("#goArea");
-      // 行駛中不用數人數：收起人數牌和加減按鈕，讓「確認抵達」直接出現在選車下方。
+      // 行駛中不用數人數：收起人數牌、加減按鈕和選車，只留行駛中卡片和「確認抵達」。
       $("#captainView .plate").hidden = !!moving && !asking;
       $("#captainView .pad").hidden = !!moving && !asking;
+      $("#busBox").hidden = !!moving && !asking && !pickerOpen;
+      var step = !sel ? 1 : moving && !asking ? 3 : 2;
+      document.querySelectorAll("#stepBar li").forEach(function (li, i) {
+        li.className = i + 1 === step ? "cur" : i + 1 < step ? "done" : "";
+      });
       if (!captain) go.innerHTML = '<button class="go" id="go" type="button" disabled>請先輸入名字</button>';
       else if (!sel) go.innerHTML = '<button class="go" id="go" type="button" disabled>請先選擇你的車</button>';
       else if (moving && askingArrive) go.innerHTML = '<div class="ask"><p>確定 ' + busName(sel.dir, sel.bus) + '<br>已抵達？' +
           '<small>按下後會記錄現在的時間並上傳。</small></p>' +
           '<div class="row"><button id="arrNo" type="button">取消</button><button id="arrYes" type="button">確定抵達</button></div></div>';
-      else if (moving && !asking) go.innerHTML = '<p class="transit"><b>行駛中</b>' + busName(sel.dir, sel.bus) + ' · ' + moving.time + ' 發車 · ' + moving.count + ' 人</p>' +
-          '<button class="go" id="arrive" type="button">確認抵達</button>';
+      else if (moving && !asking) {
+        var startMs = moving.ms || idMs(moving.id);
+        var mins = startMs ? Math.max(0, Math.floor((Date.now() - startMs) / 60000)) : null;
+        go.innerHTML = '<div class="trip" aria-live="polite"><div class="tlbl">' + busName(sel.dir, sel.bus) + '</div>' +
+          '<div class="tstate">行駛中</div>' +
+          (mins != null ? '<div class="tclock"><b>' + mins + '</b><span>分鐘</span></div>' : '') +
+          '<div class="tmeta">' + esc(moving.time) + ' 發車 · ' + moving.count + ' 人</div></div>' +
+          '<button class="go arrive-go" id="arrive" type="button">到站了，確認抵達</button>' +
+          (pickerOpen ? '' : '<button class="linkbtn" id="pickOther" type="button">換別台車</button>');
+      }
       else if (asking) go.innerHTML = '<div class="ask"><p>確定 ' + busName(sel.dir, sel.bus) + '<br>' + count + ' 人發車？' +
           '<small>按下後會記錄現在的時間並上傳，人數歸零。</small>' +
           (dup.length ? '<small class="warn">這台車今天 ' + dup[0].time + ' 已經發過車（' + dup[0].count + ' 人），確定要再記一次嗎？</small>' : '') + '</p>' +
@@ -549,7 +590,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
       var b = e.target.closest("[data-dir]");
       if (!b) return;
       sel = { date: today(), dir: b.dataset.dir, bus: Number(b.dataset.bus) };
-      LS.set("sel", sel); asking = false; askingArrive = false; render();
+      LS.set("sel", sel); asking = false; askingArrive = false; pickerOpen = false; render();
     });
     $("#nameForm").addEventListener("submit", function (e) {
       e.preventDefault();
@@ -572,7 +613,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 
     $("#goArea").addEventListener("click", function (e) {
       var id = e.target.id;
-      if (id === "arrive" && sel) { askingArrive = true; render(); $("#arrYes").focus(); }
+      if (id === "pickOther") { pickerOpen = true; render(); $("#busBox").scrollIntoView({ block: "nearest" }); }
+      else if (id === "arrive" && sel) { askingArrive = true; render(); $("#arrYes").focus(); }
       else if (id === "arrNo") { askingArrive = false; render(); }
       else if (id === "arrYes" && sel) {
         var at = new Date();
@@ -601,6 +643,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
     render();
     refreshToday();
     setInterval(function () { if (document.visibilityState === "visible") refreshToday(); }, 30000);
+    setInterval(function () { if (isMoving && !askingArrive && document.visibilityState === "visible") render(); }, 20000);
     if (hasServer) run({ action: "ping", pin: LS.get("pin", "") }).then(function () { online = true; render(); flush(); }, function (e) {
       if (e.code === "bad_pin") { needPin = true; $("#pinBox").hidden = false; } else online = false;
       render();
