@@ -1,32 +1,841 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
+<base target="_top">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#027F85">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Bus Servant">
-<title>Bus Servant | 學生車長</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23027F85'/%3E%3Crect x='14' y='12' width='36' height='34' rx='7' fill='none' stroke='%23F2EFE6' stroke-width='4'/%3E%3Cpath d='M14 30h36' stroke='%23F2EFE6' stroke-width='4'/%3E%3Ccircle cx='23' cy='38' r='2.5' fill='%23F2EFE6'/%3E%3Ccircle cx='41' cy='38' r='2.5' fill='%23F2EFE6'/%3E%3Cpath d='M22 46v6M42 46v6' stroke='%23F2EFE6' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>Bus Servant | 學生車長</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600;700&family=Open+Sans:wght@700;800&family=Noto+Sans+TC:wght@300;400;500;700&display=swap">
 <style>
-  /* 外框：整頁顯示 Google Apps Script 的 Bus Servant，嵌入時 Google 不會顯示「由 Apps Script 使用者建立」的提示。 */
-  html, body { margin: 0; height: 100%; background: #F2EFE6; }
-  @media (prefers-color-scheme: dark) { html, body { background: #0B2527; } }
-  .loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-    font: 300 1rem/1.5 "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
-    letter-spacing: .3em; color: #027F85; }
-  iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: transparent; }
+/* Layout: one screen — teal brand band like the Change Life Church mark, teal count plate, thumb buttons, confirm bar, everyone's departures below */
+:root{
+  --bg:#F2EFE6; --surface:#FBFAF6; --ink:#0F3537; --muted:#5E716F; --line:#DCD6C8;
+  --teal:#027F85; --cream:#F2EFE6;
+  --bus:#027F85; --bus-ink:#F2EFE6; --go:#027F85; --on-go:#F2EFE6;
+  --ok:#2F7A4E; --wait:#A8691A; --minus:#B0432F; --back:#9C6B22;
+  --tint:rgba(2,127,133,.10);
+  --banner:#196D6F; --banner-ink:#A3C5C7;
+  --num:"Josefin Sans","Avenir Next","Century Gothic",system-ui,sans-serif;
+  --brand:"Josefin Sans","Avenir Next","Century Gothic",system-ui,sans-serif;
+  --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0B2527; --surface:#123436; --ink:#F2EFE6; --muted:#9FB5B2; --line:#24494B;
+  --bus:#038A90; --go:#2BA3A8; --on-go:#0B2527; --ok:#6CCB93; --wait:#E3A653; --minus:#F08C78; --back:#D9A85A;
+  --tint:rgba(43,163,168,.16); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0B2527; --surface:#123436; --ink:#F2EFE6; --muted:#9FB5B2; --line:#24494B;
+  --bus:#038A90; --go:#2BA3A8; --on-go:#0B2527; --ok:#6CCB93; --wait:#E3A653; --minus:#F08C78; --back:#D9A85A;
+  --tint:rgba(43,163,168,.16); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{min-height:100%}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:max(20px,env(safe-area-inset-bottom,0px))}
+.app{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+button{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--teal);outline-offset:3px}
+
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--teal);color:var(--cream);border-radius:14px;padding:10px 10px 10px 16px}
+.top{flex-wrap:wrap;row-gap:8px}
+.top h1{margin:0;display:flex;align-items:center;gap:10px;font-weight:300;min-width:0;flex-shrink:0}
+@media (max-width:400px){.top h1 .en{letter-spacing:.18em}.top h1 .zh{letter-spacing:.12em;padding-left:9px}}
+.top h1 .en{font-family:var(--brand);font-size:.98rem;letter-spacing:.24em;line-height:1;padding-top:.15em;white-space:nowrap}
+.top h1 .en b{font-weight:700;letter-spacing:.2em}
+.top h1 .zh{font-family:var(--body);font-weight:300;font-size:.95rem;letter-spacing:.24em;border-left:1px solid rgba(242,239,230,.7);padding-left:12px;white-space:nowrap}
+.sync{display:flex;align-items:center;gap:6px;font-size:.8rem;color:rgba(242,239,230,.85);white-space:nowrap}
+.dot{width:9px;height:9px;border-radius:50%;background:rgba(242,239,230,.4)}
+.dot.ok{background:#7FE0A8} .dot.wait{background:#F5C26B}
+.tright{display:flex;align-items:center;gap:8px;margin-left:auto}
+.sync.quiet span:last-child{display:none}
+.refresh{width:36px;height:36px;border:1px solid rgba(242,239,230,.6);background:transparent;color:var(--cream);border-radius:50%;padding:0;font-size:1.15rem;line-height:1;cursor:pointer}
+.refresh:active{background:rgba(242,239,230,.15)}
+
+/* 車長名字 */
+.me{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--muted);font-size:.9rem;padding:0 4px}
+.me b{color:var(--ink)}
+.me button{border:0;background:none;color:var(--teal);padding:4px 0;min-height:32px;font-size:.9rem;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.namebox,.pin{background:var(--surface);border:2px solid var(--teal);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.pin{border-color:var(--wait)}
+.namebox label,.pin p{margin:0;line-height:1.5}
+.namebox .row,.pin form{display:flex;gap:10px}
+.namebox input,.pin input{flex:1;min-width:0;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font:inherit;color:inherit;font-size:1.05rem}
+.namebox button,.pin button{border:0;border-radius:10px;background:var(--go);color:var(--on-go);font-weight:700;padding:0 18px;cursor:pointer;min-height:48px}
+
+/* 今天的聚會 */
+/* 聚會名稱：仿「2026 CLC CONFERENCE」橫幅 — Open Sans 粗體大寫，淺薄荷綠字配深青綠底 */
+.evname{font-family:"Open Sans","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.01em;line-height:1.15;overflow-wrap:anywhere}
+.evbanner{display:block;background:var(--banner);color:var(--banner-ink);border-radius:12px;padding:10px 12px 9px;font-size:1.5rem;text-align:center}
+.event{margin:0;text-align:center;font-variant-numeric:tabular-nums;font-size:.9rem;color:var(--muted)}
+.event .evname{margin-bottom:4px}
+
+/* 選車 */
+.buses{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.buses h2{margin:0;font-size:.85rem;font-weight:400;letter-spacing:.25em;color:var(--teal)}
+.brow{display:grid;grid-template-columns:2.8em 1fr;gap:6px;align-items:center}
+.brow .dl{font-weight:500;color:var(--teal);letter-spacing:.15em}
+.brow .dl.back{color:var(--back)}
+.bgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.bus{min-height:54px;border:2px solid var(--line);background:var(--bg);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2;padding:4px}
+.bus b{font-size:1.05rem}
+.bus small{font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums;line-height:1.25}
+.bus.done small{color:var(--ok);font-weight:700}
+.bus.moving small{color:var(--wait);font-weight:700}
+.bus[aria-pressed="true"]{border-color:var(--bus-ink);background:var(--bus);color:var(--bus-ink)}
+.bus[aria-pressed="true"] small{color:var(--bus-ink)}
+.bnote{margin:0;font-size:.85rem;color:var(--wait)}
+
+.plate{background:var(--bus);color:var(--bus-ink);border-radius:16px;padding:12px 14px 10px;text-align:center;
+  box-shadow:inset 0 0 0 7px var(--bus),inset 0 0 0 8px rgba(242,239,230,.55)}
+.plate .lbl{font-size:.85rem;font-weight:300;letter-spacing:.35em;padding-left:.35em}
+.plate .n{font-family:var(--num);font-weight:600;font-size:clamp(5.5rem,27vw,8rem);line-height:1;padding-top:.08em;font-variant-numeric:tabular-nums}
+.plate .unit{font-size:.85rem;font-weight:300;letter-spacing:.3em;padding-left:.3em}
+
+.pad{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pad button{min-height:84px;border-radius:14px;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  font-family:var(--num);font-weight:300;font-size:3rem;line-height:1}
+.pad button span{font-family:var(--body);font-size:.9rem;font-weight:700}
+.pad button:active{transform:scale(.97)}
+#minus{background:var(--surface);color:var(--minus);border:2px solid var(--minus)}
+#plus{background:var(--surface);color:var(--teal);border:2px solid var(--teal)}
+#minus:disabled{opacity:.4;cursor:not-allowed}
+
+.go{width:100%;min-height:58px;border:0;border-radius:14px;background:var(--go);color:var(--on-go);font-size:1.3rem;font-weight:500;letter-spacing:.35em;padding-left:.35em;cursor:pointer}
+.go:disabled{opacity:.35;cursor:not-allowed}
+.ask{background:var(--surface);border:2px solid var(--teal);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.ask p{margin:0;font-size:1.15rem;font-weight:700;text-align:center}
+.ask p small{display:block;font-size:.9rem;font-weight:500;color:var(--muted)}
+.ask .warn{color:var(--minus);font-size:.95rem}
+.ask .row{display:grid;grid-template-columns:1fr 1.4fr;gap:10px}
+.ask button{min-height:56px;border-radius:12px;font-weight:700;font-size:1.05rem;cursor:pointer}
+#no{background:var(--surface);border:1px solid var(--line)}
+#yes{background:var(--go);color:var(--on-go);border:0}
+
+/* 清單 */
+.hist{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.hist h2{margin:0 0 6px;font-size:.85rem;font-weight:400;letter-spacing:.25em;color:var(--teal);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.hist h2 em{font-style:normal;color:var(--ink);font-variant-numeric:tabular-nums}
+.hist ul{list-style:none;margin:0;padding:0}
+.hist li{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.hist li:first-child{border-top:0}
+.hist .t{font-family:var(--num);font-size:1.25rem;font-weight:600;padding-top:.12em}
+.hist .who{min-width:0;overflow-wrap:anywhere;font-weight:700}
+.hist .who small{display:inline-block;margin-left:6px;padding:0 7px;border-radius:999px;background:var(--bus);color:var(--bus-ink);font-size:.75rem;vertical-align:1px}
+.hist .s{display:block;font-size:.85rem;font-weight:700}
+.hist .s.wait{color:var(--wait)}
+.hist .arr{display:block;font-size:.85rem;font-weight:500;color:var(--ok)}
+.hist .arr.moving{color:var(--wait)}
+.go.arrive{background:var(--surface);color:var(--teal);border:2px solid var(--teal)}
+.transit{margin:0 0 10px;text-align:center;color:var(--wait);font-weight:500;letter-spacing:.1em;background:var(--surface);border:2px dashed var(--wait);border-radius:14px;padding:12px;font-size:1rem;line-height:1.6}
+.transit b{display:block;font-size:1.3rem;letter-spacing:.2em}
+.hist .c{text-align:right;white-space:nowrap;font-weight:700}
+.hist li.mine{background:linear-gradient(90deg,var(--tint),transparent 70%);margin:0 -12px;padding-left:12px;padding-right:12px}
+.tag{display:inline-block;margin-right:6px;padding:0 6px;border-radius:6px;border:1px solid currentColor;font-size:.78rem;font-weight:500;color:var(--teal);vertical-align:1px;letter-spacing:.1em}
+.tag.back{color:var(--back)}
+.empty{color:var(--muted);font-size:.95rem;padding:6px 0}
+.note{color:var(--muted);font-size:.9rem;text-align:center;margin:0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(20px,env(safe-area-inset-bottom,0px));background:var(--teal);color:var(--cream);
+  padding:10px 18px;border-radius:999px;font-weight:700;width:max-content;max-width:calc(100% - 32px);z-index:5}
+
+/* 統計頁 */
+.pick{display:grid;grid-template-columns:5.5em 1fr;gap:8px}
+.pick label{display:flex;flex-direction:column;gap:2px;font-size:.8rem;font-weight:700;color:var(--muted);letter-spacing:.06em;min-width:0}
+.pick select{min-height:44px;width:100%;min-width:0;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:1.05rem;font-weight:700;padding:0 10px;letter-spacing:0}
+.evbar small{display:block;color:var(--muted);font-family:var(--body);font-weight:400;font-size:.8rem;text-transform:none;letter-spacing:.05em;margin-top:2px}
+/* 管理 */
+.adminbar{display:flex;gap:6px;flex-wrap:wrap}
+.adminbar button{flex:1;min-height:38px;border:1px solid var(--line);background:var(--surface);color:var(--teal);border-radius:999px;font-size:.9rem;font-weight:500;cursor:pointer;padding:0 10px;white-space:nowrap}
+.adm{background:var(--surface);border:2px solid var(--teal);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.adm h2{margin:0;font-size:1.05rem}
+.adm label{display:flex;flex-direction:column;gap:4px;font-size:.85rem;font-weight:700;color:var(--muted);min-width:0}
+.adm input,.adm select{min-height:48px;width:100%;min-width:0;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;font-size:1.05rem;padding:0 12px}
+.adm .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.adm .row{display:grid;grid-template-columns:1fr 1.4fr;gap:10px}
+.adm .row button{min-height:52px;border-radius:12px;font-weight:700;font-size:1.05rem;cursor:pointer}
+.adm .row .cancel{background:var(--surface);border:1px solid var(--line)}
+.adm .row .save{background:var(--go);color:var(--on-go);border:0}
+.adm .hint{margin:0;font-size:.85rem;color:var(--muted)}
+.adm .err{margin:0;font-size:.9rem;color:var(--minus);font-weight:700}
+.adminbar button.danger{flex:0 0 auto;color:var(--minus)}
+.adm.del{border-color:var(--minus)}
+.adm .delwhat{margin:0;font-size:1.1rem;font-weight:500;color:var(--ink)}
+.adm label.check{flex-direction:row;align-items:center;gap:10px;font-size:1rem;font-weight:500;color:var(--ink);cursor:pointer}
+.adm label.check input{width:22px;height:22px;min-height:0;accent-color:var(--minus);flex:0 0 auto}
+.adm .row .save.danger{background:var(--minus);color:#fff}
+.evbar{display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 4px;text-align:center}
+.evbar{align-self:stretch}
+.evbar > .evname{width:100%}
+.evbar .meta{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.evbar .meta b{font-size:inherit;font-family:var(--body);color:var(--ink);font-weight:700;padding:0}
+.evbar .todo{color:var(--wait)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px 6px 4px;text-align:center}
+.tile span{display:block;font-size:.8rem;font-weight:700;color:var(--muted);letter-spacing:.06em}
+.tile b{display:block;font-family:var(--num);font-weight:600;font-size:1.8rem;line-height:1.1;padding-top:.1em;color:var(--teal);font-variant-numeric:tabular-nums}
+.tile b small{font-size:1.1rem;color:var(--muted)}
+.vlist li{grid-template-columns:3.6em 1fr 3.6em}
+.vlist .bn{font-weight:700}
+.vlist .mid{display:flex;flex-direction:column;gap:4px;min-width:0}
+.vlist .who{font-size:.9rem}
+.vlist .mv{color:var(--wait);font-weight:700}
+.vlist .nw{white-space:nowrap}
+.vlist .who .nw:first-child{margin-right:10px}
+.vlist .cap{color:var(--muted)}
+.vlist li.none .who{color:var(--muted);font-weight:500}
+.vlist li.none .c{color:var(--muted)}
+.bar{height:12px;border-radius:6px;background:var(--bg);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--teal);border-radius:6px}
+.bar.back i{background:var(--back)}
+.hsum{margin:0 0 4px;color:var(--muted);font-size:.9rem;font-variant-numeric:tabular-nums}
+.hlist li{grid-template-columns:4.6em 1fr auto;cursor:pointer}
+.hlist li:hover{background:var(--bg)}
+.hlist li.cur{background:linear-gradient(90deg,var(--tint),transparent 70%)}
+.hlist .dt{font-family:var(--num);font-size:1.25rem;font-weight:600;line-height:1.1;padding-top:.1em}
+.hlist .dt small{display:block;font-family:var(--body);font-size:.75rem;color:var(--muted);font-weight:500}
+.hlist .nm{min-width:0;overflow-wrap:anywhere;font-weight:700}
+.hlist .nm .evname{display:block;font-size:1rem;color:var(--ink)}
+.hlist .nm small{display:block;color:var(--muted);font-weight:500;font-size:.85rem}
+.hlist .nm small span{white-space:nowrap}
+.hlist .amt{text-align:right;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.hlist .amt.todo{color:var(--wait);font-size:.9rem}
+@media (prefers-reduced-motion:reduce){.pad button:active{transform:none}}
 </style>
 </head>
 <body>
-<div class="loading">載入中…</div>
-<iframe id="app" title="Bus Servant"></iframe>
+<div class="app" id="captainView">
+  <div class="top">
+    <h1><span class="en">BUS <b>SERVANT</b></span><span class="zh">學生車長</span></h1>
+    <div class="tright"><div class="sync" aria-live="polite"><span class="dot" id="dot"></span><span id="syncTxt">連線中</span></div>
+    <button class="refresh" id="refreshBtn" type="button" aria-label="更新" title="更新">↻</button></div>
+  </div>
+
+  <div class="me" id="meBar" hidden><span>車長：<b id="meName"></b></span><button id="meEdit" type="button">更改</button></div>
+  <form class="namebox" id="nameForm" hidden autocomplete="off">
+    <label for="nameInput"><b>請輸入你的名字</b><br>大家會在記錄裡看到是誰發的車。每支手機只需輸入一次。</label>
+    <div class="row"><input id="nameInput" maxlength="20" required placeholder="例：王小明"><button type="submit">儲存</button></div>
+  </form>
+
+  <div class="pin" id="pinBox" hidden>
+    <p><b>請輸入車長代碼</b><br>向老師索取代碼，每支手機只需輸入一次。輸入後，已存的記錄就會上傳。</p>
+    <form id="pinForm" autocomplete="off"><input id="pinInput" inputmode="numeric" maxlength="20" aria-label="車長代碼" required><button type="submit">儲存</button></form>
+  </div>
+
+  <p class="event" id="eventLine" hidden></p>
+
+  <section class="buses" id="busBox">
+    <h2>選擇你負責的車</h2>
+    <div id="busGrid"></div>
+    <p class="bnote" id="busNote" hidden></p>
+  </section>
+
+  <div class="plate" aria-live="polite">
+    <div class="lbl" id="plateLbl">車上人數</div>
+    <div class="n" id="count">0</div>
+    <div class="unit">人</div>
+  </div>
+
+  <div class="pad">
+    <button id="minus" type="button" aria-label="減一人">−<span>減 1</span></button>
+    <button id="plus" type="button" aria-label="加一人">+<span>加 1</span></button>
+  </div>
+
+  <div id="goArea"></div>
+
+  <section class="hist">
+    <h2>今天大家的發車記錄</h2>
+    <ul id="list"></ul>
+  </section>
+  <p class="note" id="note"></p>
+</div>
+
+<div class="app" id="statsView" hidden>
+  <div class="top">
+    <h1><span class="en">BUS <b>SERVANT</b></span><span class="zh">統計</span></h1>
+    <div class="tright"><div class="sync quiet" aria-live="polite"><span class="dot" id="sDot"></span><span id="sUpdated">載入中</span></div>
+    <button class="refresh" id="sRefresh" type="button" aria-label="更新" title="更新">↻</button></div>
+  </div>
+  <div class="pick">
+    <label for="yearSel">年份<select id="yearSel"></select></label>
+    <label for="eventSel">聚會<select id="eventSel"></select></label>
+  </div>
+  <div class="adminbar">
+    <button type="button" id="addEvent">＋ 新增聚會</button>
+    <button type="button" id="editEvent" hidden>✎ 編輯／金額</button>
+    <button type="button" id="delEvent" class="danger" hidden>🗑 刪除</button>
+  </div>
+  <form class="adm" id="admLogin" hidden autocomplete="off">
+    <h2>輸入管理者代碼</h2>
+    <label for="admCode">管理者代碼<input id="admCode" inputmode="numeric" maxlength="20" required></label>
+    <p class="hint">代碼在 Google 試算表的「設定」分頁。每支手機只需輸入一次。</p>
+    <p class="err" id="admErr" hidden>代碼不對，請再確認「設定」分頁裡的代碼。</p>
+    <div class="row"><button type="button" class="cancel" id="admCancel">取消</button><button type="submit" class="save">確認</button></div>
+  </form>
+  <form class="adm" id="evForm" hidden autocomplete="off">
+    <h2 id="evTitle">編輯聚會</h2>
+    <label for="fDate">日期<input id="fDate" type="date" required></label>
+    <label for="fName">聚會名稱<input id="fName" maxlength="40" placeholder="例：秋季聚會"></label>
+    <div class="two">
+      <label for="fOut">去程台數<select id="fOut"></select></label>
+      <label for="fBack">回程台數<select id="fBack"></select></label>
+    </div>
+    <label for="fAmt">金額（元）<input id="fAmt" inputmode="decimal" placeholder="還沒算好可以先空著"></label>
+    <p class="err" id="fErr" hidden></p>
+    <div class="row"><button type="button" class="cancel" id="fCancel">取消</button><button type="submit" class="save" id="fSave">儲存</button></div>
+  </form>
+  <form class="adm del" id="delForm" hidden autocomplete="off">
+    <h2>刪除聚會</h2>
+    <p class="delwhat" id="delWhat"></p>
+    <label class="check" for="delDeps"><input type="checkbox" id="delDeps"> <span id="delDepsText">同時刪除當天的發車記錄</span></label>
+    <p class="hint">只刪聚會的話，當天的發車記錄還會留著，過往記錄裡會顯示「（未設定聚會名稱）」。刪除後無法從網站復原。</p>
+    <p class="err" id="delErr" hidden></p>
+    <div class="row"><button type="button" class="cancel" id="delCancel">取消</button><button type="submit" class="save danger" id="delSave">確定刪除</button></div>
+  </form>
+  <div class="evbar" id="sEvent" hidden></div>
+  <div class="plate" aria-live="polite">
+    <div class="lbl" id="sLabel">今天搭車人次</div>
+    <div class="n" id="sTotal">–</div>
+    <div class="unit">人次（去程＋回程）</div>
+  </div>
+  <div class="tiles">
+    <div class="tile"><span>去程</span><b id="sOut">–</b></div>
+    <div class="tile"><span>回程</span><b id="sBack">–</b></div>
+    <div class="tile"><span>已抵達</span><b id="sTrips">–</b></div>
+  </div>
+  <div id="sDirs"></div>
+  <section class="hist">
+    <h2 id="hTitle">過往記錄</h2>
+    <p class="hsum" id="hSum"></p>
+    <ul id="hList" class="hlist"></ul>
+  </section>
+  <p class="note">這一頁每分鐘自動更新。聚會名稱、台數和金額可以按上方的按鈕填寫，也可以直接改試算表的「聚會」分頁。</p>
+</div>
+<div class="toast" id="toast" hidden role="status"></div>
+
 <script>
-  // 把這個網址後面的參數（例如 ?view=stats）原樣帶給 Apps Script。
-  var EXEC = "https://script.google.com/macros/s/AKfycbyA2pNgAHCbzmB8FC_ax0t45ydEddqmwhqvWc24SzsQQv9wmmxa75k1aIUs19cWqh-C/exec";
-  var q = new URLSearchParams(location.search);
-  if (q.get("view") === "stats") document.title = "Bus Servant | 搭車統計";
-  document.getElementById("app").src = EXEC + location.search;
+(function () {
+  var $ = function (s) { return document.querySelector(s); };
+  var mem = {};
+  var LS = {
+    get: function (k, d) { try { var v = localStorage.getItem(k); return v == null ? (k in mem ? mem[k] : d) : JSON.parse(v); } catch (e) { return k in mem ? mem[k] : d; } },
+    set: function (k, v) { mem[k] = v; try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+  var esc = function (v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (ch) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]; }); };
+  var pad = function (n) { return String(n).padStart(2, "0"); };
+  var dayKey = function (d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); };
+  var hhmm = function (d) { return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
+  var money = function (n) { return Number(n).toLocaleString("zh-TW") + " 元"; };
+  var WEEK = "日一二三四五六";
+  var DIRS = ["去程", "回程"];
+  var busName = function (dir, bus) { return dir && bus ? dir + " " + bus + "號車" : (dir || "未選車"); };
+  var tag = function (dir, bus) { return dir ? '<span class="tag' + (dir === "回程" ? " back" : "") + '">' + dir + (bus ? " " + bus : "") + '</span>' : ""; };
+  // 這個網頁可以從兩個地方打開：
+  //  - bus-servant.github.io（主要）：用 fetch 呼叫 Apps Script 後台（doPost）。
+  //  - Apps Script 網址本身：用 google.script.run。
+  var API = "https://script.google.com/macros/s/AKfycbyA2pNgAHCbzmB8FC_ax0t45ydEddqmwhqvWc24SzsQQv9wmmxa75k1aIUs19cWqh-C/exec";
+  var viaGas = !!(window.google && google.script && google.script.run);
+  var hasServer = viaGas || !!API;
+
+  function toast(msg) {
+    var t = $("#toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 2400);
+  }
+  function run(req) {
+    if (!viaGas) {
+      // 純文字 POST 不會觸發 CORS 預檢；Apps Script 會轉址到可跨網域讀取的 JSON。
+      return fetch(API, { method: "POST", body: JSON.stringify(req), redirect: "follow" })
+        .then(function (res) { return res.json(); })
+        .then(function (r) {
+          if (r && r.ok) return r;
+          throw { code: r ? r.code : "error" };
+        }, function () { throw { code: "network" }; });
+    }
+    return new Promise(function (resolve, reject) {
+      google.script.run
+        .withSuccessHandler(function (r) { r && r.ok ? resolve(r) : reject({ code: r ? r.code : "error" }); })
+        .withFailureHandler(function () { reject({ code: "network" }); })
+        .api(req);
+    });
+  }
+  var getStats = function (date) { return run({ action: "stats", date: date }).then(function (r) { return r.data; }); };
+
+  /* =================== 車長頁 =================== */
+  function startCaptain() {
+    var count = Math.max(0, Number(LS.get("count", 0)) || 0);
+    var history = LS.get("history", []);   // [{id, date, time, count, captain, dir, bus, sent}]
+    var captain = String(LS.get("captain", "") || "");
+    var sel = LS.get("sel", null);          // {date, dir, bus}，只在當天有效
+    var todayStats = null;
+    var asking = false, askingArrive = false, flushing = false, online = null, needPin = false;
+    var today = function () { return dayKey(new Date()); };
+    if (sel && sel.date !== today()) sel = null;
+
+    function flush() {
+      if (flushing || needPin) return;
+      var next = history.slice().reverse().find(function (r) { return !r.sent; });
+      if (!next) { render(); return; }
+      flushing = true; render();
+      var req = next.kind === "arrive"
+        ? { action: "arrive", pin: LS.get("pin", ""), record: { id: next.id, date: next.date, time: next.time, dir: next.dir, bus: next.bus } }
+        : { action: "add", pin: LS.get("pin", ""), record: { id: next.id, date: next.date, time: next.time, count: next.count,
+            captain: next.captain || captain, dir: next.dir || "", bus: next.bus || "" } };
+      run(req).then(function () {
+        next.sent = true; LS.set("history", history); online = true; flushing = false; refreshToday(); flush();
+      }, function (e) {
+        flushing = false;
+        if (e.code === "bad_pin") { needPin = true; $("#pinBox").hidden = false; }
+        else if (e.code === "bad_record" || e.code === "no_departure") { next.sent = true; LS.set("history", history); return flush(); }
+        else online = false;
+        render();
+      });
+    }
+    setInterval(flush, 15000);
+    window.addEventListener("online", flush);
+
+    function refreshToday() {
+      if (!hasServer) return Promise.resolve(false);
+      return getStats(today()).then(function (d) { todayStats = d; render(); return true; }, function () { return false; });
+    }
+    // 手機「往下拉」在 Google 外框裡沒有作用，所以頁面上放一個更新按鈕。
+    $("#refreshBtn").addEventListener("click", function () {
+      var b = this; b.disabled = true; b.textContent = "…";
+      flush();
+      refreshToday().then(function (ok) {
+        b.disabled = false; b.textContent = "↻";
+        toast(ok ? "已更新" : "連不上網路，稍後再試");
+      });
+    });
+
+    // 今天所有的發車：伺服器上的，加上這支手機還沒上傳的。
+    function todayRows() {
+      var t = today();
+      var rows = (todayStats ? todayStats.departures : []).map(function (r) {
+        return { id: r.id, time: r.time, count: r.count, captain: r.captain, dir: r.dir, bus: r.bus, date: t, sent: true, arrive: r.arrive || "" };
+      });
+      var onServer = {};
+      rows.forEach(function (r) { onServer[r.id] = true; });
+      history.forEach(function (r) {
+        if (r.kind !== "arrive" && !onServer[r.id] && (!r.sent || (!todayStats && r.date === t))) rows.push(Object.assign({ arrive: "" }, r));
+      });
+      rows.sort(function (a, b) { var x = a.date + a.time, y = b.date + b.time; return x < y ? 1 : x > y ? -1 : 0; });
+      // 這支手機記下、伺服器還沒顯示的抵達時間，套到那台車最近一次發車上。
+      history.filter(function (a) { return a.kind === "arrive" && a.date === t && (!a.sent || !todayStats); }).reverse().forEach(function (a) {
+        var d = rows.filter(function (x) { return x.date === t && x.dir === a.dir && Number(x.bus) === Number(a.bus); })[0];
+        if (d) { d.arrive = a.time; d.arrivePending = !a.sent; }
+      });
+      return rows;
+    }
+    function departedOf(rows, dir, bus) {
+      return rows.filter(function (r) { return r.kind !== "arrive" && r.date === today() && r.dir === dir && Number(r.bus) === Number(bus); });
+    }
+
+    function render() {
+      var rows = todayRows();
+      $("#count").textContent = count;
+      $("#minus").disabled = count === 0;
+      $("#meBar").hidden = !captain;
+      $("#meName").textContent = captain;
+      if (!captain) $("#nameForm").hidden = false;
+
+      // 今天的聚會與台數
+      var st = todayStats;
+      var line = $("#eventLine");
+      if (st) {
+        line.hidden = false;
+        line.innerHTML = (st.event ? '<b class="evname evbanner">' + esc(st.event) + '</b>' : '') +
+          '<span>今天全部：</span>' + st.trips + ' 班 · ' + st.total + ' 人次';
+      }
+      var planned = st && (st.out || st.back);
+      var nOut = planned ? st.out : 3, nBack = planned ? st.back : 3;
+      $("#busNote").hidden = !st || planned;
+      $("#busNote").textContent = "管理者還沒設定今天的台數，先顯示去程、回程各 3 台。";
+      $("#busGrid").innerHTML = DIRS.map(function (dir) {
+        var n = dir === "去程" ? nOut : nBack;
+        if (!n) return "";
+        var cells = "";
+        for (var b = 1; b <= n; b++) {
+          var done = departedOf(rows, dir, b);
+          var on = sel && sel.dir === dir && sel.bus === b;
+          var st = !done.length ? "" : done[0].arrive ? " done" : " moving";
+          cells += '<button type="button" class="bus' + st + '" data-dir="' + dir + '" data-bus="' + b + '" aria-pressed="' + !!on + '">' +
+            '<b>' + b + '號車</b><small>' + (!done.length ? "未發車"
+              : done[0].arrive ? "✓ 抵達 " + done[0].arrive + "<br>" + done[0].count + " 人"
+              : "行駛中 " + done[0].time + "<br>" + done[0].count + " 人") + '</small></button>';
+        }
+        return '<div class="brow"><span class="dl' + (dir === "回程" ? " back" : "") + '">' + dir + '</span><div class="bgrid">' + cells + '</div></div>';
+      }).join("");
+      $("#plateLbl").textContent = sel ? busName(sel.dir, sel.bus) + " · 車上人數" : "車上人數";
+
+      var dup = sel ? departedOf(rows, sel.dir, sel.bus) : [];
+      var moving = dup.length && !dup[0].arrive ? dup[0] : null;
+      var go = $("#goArea");
+      // 行駛中不用數人數：收起人數牌和加減按鈕，讓「確認抵達」直接出現在選車下方。
+      $("#captainView .plate").hidden = !!moving && !asking;
+      $("#captainView .pad").hidden = !!moving && !asking;
+      if (!captain) go.innerHTML = '<button class="go" id="go" type="button" disabled>請先輸入名字</button>';
+      else if (!sel) go.innerHTML = '<button class="go" id="go" type="button" disabled>請先選擇你的車</button>';
+      else if (moving && askingArrive) go.innerHTML = '<div class="ask"><p>確定 ' + busName(sel.dir, sel.bus) + '<br>已抵達？' +
+          '<small>按下後會記錄現在的時間並上傳。</small></p>' +
+          '<div class="row"><button id="arrNo" type="button">取消</button><button id="arrYes" type="button">確定抵達</button></div></div>';
+      else if (moving && !asking) go.innerHTML = '<p class="transit"><b>行駛中</b>' + busName(sel.dir, sel.bus) + ' · ' + moving.time + ' 發車 · ' + moving.count + ' 人</p>' +
+          '<button class="go" id="arrive" type="button">確認抵達</button>';
+      else if (asking) go.innerHTML = '<div class="ask"><p>確定 ' + busName(sel.dir, sel.bus) + '<br>' + count + ' 人發車？' +
+          '<small>按下後會記錄現在的時間並上傳，人數歸零。</small>' +
+          (dup.length ? '<small class="warn">這台車今天 ' + dup[0].time + ' 已經發過車（' + dup[0].count + ' 人），確定要再記一次嗎？</small>' : '') + '</p>' +
+          '<div class="row"><button id="no" type="button">取消</button><button id="yes" type="button">確定發車</button></div></div>';
+      else go.innerHTML = '<button class="go" id="go" type="button"' + (count === 0 ? " disabled" : "") + '>確認發車</button>';
+
+      var mine = {};
+      history.forEach(function (r) { mine[r.id] = true; });
+      var t = today();
+      $("#list").innerHTML = rows.length ? rows.map(function (r) {
+        var isMine = !!mine[r.id];
+        return '<li' + (isMine ? ' class="mine"' : '') + '><span class="t">' + esc(r.time) + '</span>' +
+          '<span class="who">' + tag(r.dir, r.bus) + (esc(r.captain) || '（未填名字）') + (isMine ? '<small>我</small>' : '') +
+          (r.dir ? (r.arrive ? '<span class="arr">抵達 ' + esc(r.arrive) + (r.arrivePending ? '（等待上傳）' : '') + '</span>' : '<span class="arr moving">行駛中</span>') : '') +
+          (isMine && !r.sent ? '<span class="s wait">等待上傳</span>' : '') + '</span>' +
+          '<span class="c">' + r.count + ' 人' + (r.date !== t ? '<br><small>' + esc(r.date) + '</small>' : '') + '</span></li>';
+      }).join("") : '<li class="empty">今天還沒有人發車。選好車、數好人數後按「確認發車」。</li>';
+
+      var waiting = history.filter(function (r) { return !r.sent; }).length;
+      var dot = $("#dot"), txt = $("#syncTxt");
+      dot.className = "dot";
+      if (!hasServer) txt.textContent = "預覽";
+      else if (needPin) { dot.classList.add("wait"); txt.textContent = "需要代碼"; }
+      else if (waiting) { dot.classList.add("wait"); txt.textContent = (online === false ? "離線 · " : "上傳中 · ") + waiting + " 筆"; }
+      else if (online) { dot.classList.add("ok"); txt.textContent = "已同步"; }
+      else txt.textContent = online === false ? "離線" : "連線中";
+      txt.parentNode.classList.toggle("quiet", dot.classList.contains("ok"));
+      txt.parentNode.title = txt.textContent;
+      $("#note").textContent = hasServer ? (waiting && online === false ? "沒有訊號也沒關係，記錄已存在手機裡，有訊號時會自動上傳。" : "")
+        : "這是預覽版，記錄只存在這支手機。部署到 Google 後才會上傳。";
+    }
+
+    $("#busGrid").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-dir]");
+      if (!b) return;
+      sel = { date: today(), dir: b.dataset.dir, bus: Number(b.dataset.bus) };
+      LS.set("sel", sel); asking = false; askingArrive = false; render();
+    });
+    $("#nameForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var v = $("#nameInput").value.trim().slice(0, 20);
+      if (!v) return;
+      captain = v; LS.set("captain", v);
+      $("#nameForm").hidden = true; render();
+    });
+    $("#meEdit").addEventListener("click", function () {
+      $("#nameInput").value = captain; $("#nameForm").hidden = false; $("#nameInput").focus();
+    });
+    $("#pinForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      LS.set("pin", $("#pinInput").value.trim());
+      needPin = false; $("#pinBox").hidden = true; flush();
+    });
+    function buzz() { try { navigator.vibrate && navigator.vibrate(15); } catch (e) {} }
+    $("#plus").addEventListener("click", function () { count += 1; LS.set("count", count); buzz(); render(); });
+    $("#minus").addEventListener("click", function () { if (count > 0) { count -= 1; LS.set("count", count); buzz(); render(); } });
+
+    $("#goArea").addEventListener("click", function (e) {
+      var id = e.target.id;
+      if (id === "arrive" && sel) { askingArrive = true; render(); $("#arrYes").focus(); }
+      else if (id === "arrNo") { askingArrive = false; render(); }
+      else if (id === "arrYes" && sel) {
+        var at = new Date();
+        history.unshift({ kind: "arrive", id: at.getTime().toString(36) + Math.random().toString(36).slice(2, 7), date: dayKey(at), time: hhmm(at),
+          dir: sel.dir, bus: sel.bus, sent: false });
+        LS.set("history", history);
+        toast(busName(sel.dir, sel.bus) + " " + hhmm(at) + " 已抵達");
+        askingArrive = false;
+        render(); flush();
+      }
+      else if (id === "go" && count > 0 && sel) { asking = true; render(); $("#yes").focus(); }
+      else if (id === "no") { asking = false; render(); }
+      else if (id === "yes" && sel) {
+        var now = new Date();
+        var rec = { id: now.getTime().toString(36) + Math.random().toString(36).slice(2, 7), date: dayKey(now), time: hhmm(now),
+          count: count, captain: captain, dir: sel.dir, bus: sel.bus, ms: now.getTime(), sent: false };
+        history.unshift(rec);
+        history = history.filter(function (r, i) { return !r.sent || i < 60; });
+        LS.set("history", history);
+        toast(busName(rec.dir, rec.bus) + " " + rec.time + " 發車，" + rec.count + " 人");
+        count = 0; LS.set("count", 0); asking = false;
+        render(); flush();
+      }
+    });
+
+    render();
+    refreshToday();
+    setInterval(function () { if (document.visibilityState === "visible") refreshToday(); }, 30000);
+    if (hasServer) run({ action: "ping", pin: LS.get("pin", "") }).then(function () { online = true; render(); flush(); }, function (e) {
+      if (e.code === "bad_pin") { needPin = true; $("#pinBox").hidden = false; } else online = false;
+      render();
+    });
+  }
+
+  /* =================== 統計頁（網址加上 ?view=stats） =================== */
+  function startStats() {
+    $("#captainView").hidden = true;
+    $("#statsView").hidden = false;
+    document.title = "Bus Servant | 搭車統計";
+    var list = [];          // 每一天（有聚會或有發車），新的在前
+    var cur = "";           // 目前顯示的日期
+    var dateText = function (d) {
+      var p = d.split("-");
+      return +p[1] + "/" + +p[2] + "（" + WEEK[new Date(+p[0], +p[1] - 1, +p[2]).getDay()] + "）";
+    };
+    var label = function (x) { return dateText(x.date) + " " + (x.event || "（未設定聚會名稱）"); };
+
+    function renderPickers() {
+      var years = [];
+      list.forEach(function (x) { var y = x.date.slice(0, 4); if (years.indexOf(y) < 0) years.push(y); });
+      var year = cur ? cur.slice(0, 4) : years[0];
+      $("#yearSel").innerHTML = years.length ? years.map(function (y) {
+        return '<option value="' + y + '"' + (y === year ? " selected" : "") + '>' + y + '</option>';
+      }).join("") : '<option>' + new Date().getFullYear() + '</option>';
+      var inYear = list.filter(function (x) { return x.date.slice(0, 4) === year; });
+      $("#eventSel").innerHTML = inYear.length ? inYear.map(function (x) {
+        return '<option value="' + esc(x.date) + '"' + (x.date === cur ? " selected" : "") + '>' + esc(label(x)) + '</option>';
+      }).join("") : '<option>還沒有聚會</option>';
+
+      // 這一年的過往記錄
+      var events = inYear.filter(function (x) { return x.event || x.amount != null; });
+      var sum = inYear.reduce(function (a, x) { return a + (x.amount || 0); }, 0);
+      var riders = inYear.reduce(function (a, x) { return a + x.total; }, 0);
+      $("#hTitle").textContent = (year || "") + " 年過往記錄";
+      $("#hSum").textContent = inYear.length ? "共 " + events.length + " 次聚會 · " + riders + " 人次 · 累計 " + money(sum) : "";
+      $("#hList").innerHTML = inYear.length ? inYear.map(function (x) {
+        var p = x.date.split("-");
+        var sub = x.out || x.back || x.outTotal || x.backTotal
+          ? '<span>去程 ' + (x.out ? x.out + '台 ' : '') + x.outTotal + '人</span> · <span>回程 ' + (x.back ? x.back + '台 ' : '') + x.backTotal + '人</span>'
+          : x.trips + ' 班 · ' + x.total + ' 人';
+        return '<li data-date="' + esc(x.date) + '"' + (x.date === cur ? ' class="cur"' : '') + '>' +
+          '<span class="dt">' + +p[1] + '/' + +p[2] + '<small>' + p[0] + '（' + WEEK[new Date(+p[0], +p[1] - 1, +p[2]).getDay()] + '）</small></span>' +
+          '<span class="nm"><span class="evname">' + (esc(x.event) || '（未設定聚會名稱）') + '</span><small>' + sub + '</small></span>' +
+          (x.amount == null ? '<span class="amt todo">待計算</span>' : '<span class="amt">' + money(x.amount) + '</span>') + '</li>';
+      }).join("") : '<li class="empty">這一年還沒有任何記錄。</li>';
+      $("#editEvent").hidden = $("#delEvent").hidden = !list.some(function (x) { return x.date === cur; });
+    }
+
+    function choose(date) {
+      cur = date;
+      renderPickers();
+      load();
+    }
+    $("#yearSel").addEventListener("change", function () {
+      var y = $("#yearSel").value;
+      var first = list.filter(function (x) { return x.date.slice(0, 4) === y; })[0];
+      if (first) choose(first.date);
+    });
+    $("#eventSel").addEventListener("change", function () { choose($("#eventSel").value); });
+    $("#hList").addEventListener("click", function (e) {
+      var li = e.target.closest("[data-date]");
+      if (!li) return;
+      choose(li.dataset.date);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    function dirSection(d, dir, planned, max) {
+      var rows = d.departures.filter(function (r) { return r.dir === dir; });
+      var n = Math.max(planned, rows.reduce(function (m, r) { return Math.max(m, r.bus); }, 0));
+      if (!n && !rows.length) return "";
+      var sent = {}, items = "";
+      rows.forEach(function (r) { if (r.bus) sent[r.bus] = true; });
+      var line = function (r, label) {
+        var w = max ? Math.max(4, Math.round(r.count / max * 100)) : 0;
+        var mins = r.arrive ? (function () { var a = r.time.split(":"), b = r.arrive.split(":"); var m = (b[0] * 60 + +b[1]) - (a[0] * 60 + +a[1]); return m >= 0 ? m : null; })() : null;
+        var when = '<span class="nw">' + esc(r.time) + (r.arrive ? ' → ' + esc(r.arrive) + (mins != null ? '（' + mins + ' 分）' : '') : ' · <span class="mv">行駛中</span>') + '</span>';
+        return '<li><span class="bn">' + label + '</span><span class="mid"><span class="who">' + when + '<span class="nw cap">' + (esc(r.captain) || '（未填名字）') + '</span></span>' +
+          '<span class="bar' + (dir === "回程" ? " back" : "") + '"><i style="width:' + w + '%"></i></span></span><span class="c">' + r.count + ' 人</span></li>';
+      };
+      for (var b = 1; b <= n; b++) {
+        var mine = rows.filter(function (r) { return r.bus === b; });
+        if (mine.length) mine.forEach(function (r) { items += line(r, b + "號車"); });
+        else items += '<li class="none"><span class="bn">' + b + '號車</span><span class="mid"><span class="who">尚未發車</span></span><span class="c">–</span></li>';
+      }
+      rows.filter(function (r) { return !r.bus; }).forEach(function (r) { items += line(r, "未選車"); });
+      var total = rows.reduce(function (a, r) { return a + r.count; }, 0);
+      var arrived = {};
+      rows.forEach(function (r) { if (r.bus && r.arrive) arrived[r.bus] = true; });
+      return '<section class="hist"><h2><span>' + tag(dir) + '已發車 ' + Object.keys(sent).length + '/' + n + ' · 已抵達 ' + Object.keys(arrived).length + '</span><em>' + total + ' 人</em></h2><ul class="vlist">' + items + '</ul></section>';
+    }
+
+    function load() {
+      var date = cur || dayKey(new Date()), today = dayKey(new Date());
+      $("#sLabel").textContent = date === today ? "今天搭車人次" : dateText(date) + " 搭車人次";
+      $("#sUpdated").textContent = "載入中";
+      return getStats(date).then(function (d) {
+        lastStats = d;
+        if (date !== (cur || today)) return;
+        var ev = $("#sEvent");
+        ev.hidden = false;
+        ev.innerHTML = '<b class="evname evbanner">' + (esc(d.event) || '（未設定聚會名稱）') + '</b>' +
+          '<span class="meta">' + date.replace(/-/g, "/") + ' · ' + (d.amount == null ? '<span class="todo">車資待計算</span>' : '車資 <b>' + money(d.amount) + '</b>') + '</span>';
+        var planned = (d.out || 0) + (d.back || 0);
+        var sentBuses = {}, arrivedBuses = {};
+        d.departures.forEach(function (r) { if (r.dir && r.bus) { sentBuses[r.dir + r.bus] = true; if (r.arrive) arrivedBuses[r.dir + r.bus] = true; } });
+        $("#sTotal").textContent = d.total;
+        $("#sOut").textContent = d.outTotal;
+        $("#sBack").textContent = d.backTotal;
+        $("#sTrips").innerHTML = Object.keys(arrivedBuses).length + '<small>/' + (planned || Object.keys(sentBuses).length || d.trips) + '</small>';
+        var max = d.departures.reduce(function (m, r) { return Math.max(m, r.count); }, 0);
+        var other = d.departures.filter(function (r) { return !r.dir; });
+        var html = dirSection(d, "去程", d.out || 0, max) + dirSection(d, "回程", d.back || 0, max);
+        if (other.length) html += '<section class="hist"><h2>其他（舊版記錄，未分去回程）</h2><ul class="vlist">' + other.map(function (r) {
+          return '<li><span class="bn">' + esc(r.time) + '</span><span class="mid"><span class="who">' + (esc(r.captain) || '（未填名字）') + '</span></span><span class="c">' + r.count + ' 人</span></li>';
+        }).join("") + '</ul></section>';
+        $("#sDirs").innerHTML = html || '<section class="hist"><ul><li class="empty">這一天還沒有發車記錄。</li></ul></section>';
+        $("#sDot").className = "dot ok";
+        $("#sUpdated").textContent = hhmm(new Date()) + " 更新";
+        return true;
+      }, function () {
+        $("#sDot").className = "dot wait";
+        $("#sUpdated").textContent = "無法載入，稍後重試";
+        return false;
+      });
+    }
+
+    function loadHistory(first) {
+      return run({ action: "history" }).then(function (r) {
+        list = r.data;
+        if (first) {
+          // 預設：今天的聚會；沒有的話，最近一次已經舉行的；再沒有就最新的一筆。
+          var today = dayKey(new Date());
+          var pick = list.filter(function (x) { return x.date === today; })[0] ||
+            list.filter(function (x) { return x.date <= today; })[0] || list[0];
+          cur = pick ? pick.date : today;
+        }
+        renderPickers();
+      }, function () { if (first) cur = dayKey(new Date()); });
+    }
+
+    /* ----- 管理：新增／編輯聚會與金額 ----- */
+    var pending = null;     // 登入後要打開的表單："add"、"edit" 或 "delete"
+    var lastStats = null;   // 目前顯示的那一天的統計（刪除時用來顯示發車筆數）
+    var editing = null;     // 編輯中的原日期
+    function counts(sel, v) {
+      var n = Math.max(3, v || 0), h = "";
+      for (var i = 0; i <= n; i++) h += '<option value="' + i + '"' + (i === (v || 0) ? " selected" : "") + '>' + i + ' 台</option>';
+      $(sel).innerHTML = h;
+    }
+    function openForm(mode) {
+      $("#admLogin").hidden = true;
+      var x = mode === "edit" ? list.filter(function (y) { return y.date === cur; })[0] : null;
+      editing = x ? x.date : null;
+      $("#evTitle").textContent = x ? "編輯聚會／填寫金額" : "新增聚會";
+      $("#fDate").value = x ? x.date : dayKey(new Date());
+      $("#fName").value = x ? x.event : "";
+      counts("#fOut", x ? x.out : 3);
+      counts("#fBack", x ? x.back : 3);
+      $("#fAmt").value = x && x.amount != null ? x.amount : "";
+      $("#fErr").hidden = true;
+      $("#evForm").hidden = false;
+      (x ? $("#fAmt") : $("#fName")).focus();
+    }
+    function openMode(mode) { return mode === "delete" ? openDelete() : openForm(mode); }
+    function openDelete() {
+      $("#admLogin").hidden = true; $("#evForm").hidden = true;
+      var x = list.filter(function (y) { return y.date === cur; })[0];
+      if (!x) return;
+      var n = lastStats && lastStats.date === cur ? lastStats.departures.length : x.trips;
+      $("#delWhat").textContent = "確定刪除 " + dateText(x.date) + " " + (x.event || "（未設定聚會名稱）") + "？";
+      $("#delDeps").checked = false;
+      $("#delDeps").disabled = !n;
+      $("#delDepsText").textContent = n ? "同時刪除當天的發車記錄（" + n + " 筆）" : "當天沒有發車記錄";
+      $("#delErr").hidden = true;
+      $("#delForm").hidden = false;
+    }
+    function needAdmin(mode) {
+      $("#delForm").hidden = true;
+      if (LS.get("admin", "")) return openMode(mode);
+      pending = mode;
+      $("#evForm").hidden = true;
+      $("#admErr").hidden = true;
+      $("#admCode").value = "";
+      $("#admLogin").hidden = false;
+      $("#admCode").focus();
+    }
+    $("#addEvent").addEventListener("click", function () { needAdmin("add"); });
+    $("#editEvent").addEventListener("click", function () { needAdmin("edit"); });
+    $("#admCancel").addEventListener("click", function () { $("#admLogin").hidden = true; });
+    $("#fCancel").addEventListener("click", function () { $("#evForm").hidden = true; });
+    $("#delEvent").addEventListener("click", function () { needAdmin("delete"); });
+    $("#delCancel").addEventListener("click", function () { $("#delForm").hidden = true; });
+    $("#delForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var date = cur;
+      $("#delSave").disabled = true;
+      run({ action: "deleteEvent", admin: LS.get("admin", ""), date: date, withDepartures: $("#delDeps").checked }).then(function (res) {
+        $("#delSave").disabled = false;
+        $("#delForm").hidden = true;
+        toast("已刪除" + (res.data.departures ? "（含 " + res.data.departures + " 筆發車記錄）" : ""));
+        loadHistory(true).then(load);
+      }, function (err) {
+        $("#delSave").disabled = false;
+        if (err.code === "bad_admin") { LS.set("admin", ""); $("#delForm").hidden = true; needAdmin("delete"); return; }
+        $("#delErr").textContent = "刪除失敗，請檢查網路後再試。";
+        $("#delErr").hidden = false;
+      });
+    });
+    $("#admLogin").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var code = $("#admCode").value.trim();
+      run({ action: "checkAdmin", admin: code }).then(function () {
+        LS.set("admin", code);
+        openMode(pending);
+      }, function (err) {
+        $("#admErr").textContent = err.code === "bad_admin" ? "代碼不對，請再確認「設定」分頁裡的代碼。" : "連不上網路，請稍後再試。";
+        $("#admErr").hidden = false;
+      });
+    });
+    $("#evForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var amt = $("#fAmt").value.replace(/[,，\s元]/g, "");
+      if (amt && !isFinite(Number(amt))) { $("#fErr").textContent = "金額只能填數字，例如 8640。"; $("#fErr").hidden = false; return; }
+      $("#fSave").disabled = true;
+      run({ action: "saveEvent", admin: LS.get("admin", ""), event: {
+        origDate: editing, date: $("#fDate").value, name: $("#fName").value.trim(),
+        out: Number($("#fOut").value), back: Number($("#fBack").value), amount: amt
+      } }).then(function (r) {
+        $("#fSave").disabled = false;
+        $("#evForm").hidden = true;
+        toast("已儲存");
+        cur = r.data.date;
+        loadHistory(false).then(load);
+      }, function (err) {
+        $("#fSave").disabled = false;
+        if (err.code === "bad_admin") { LS.set("admin", ""); $("#evForm").hidden = true; needAdmin(editing ? "edit" : "add"); return; }
+        $("#fErr").textContent = err.code === "date_taken" ? "那一天已經有聚會了，請直接選那一天來編輯。"
+          : err.code === "bad_date" ? "請選擇日期。" : "儲存失敗，請檢查網路後再試。";
+        $("#fErr").hidden = false;
+      });
+    });
+
+    $("#sRefresh").addEventListener("click", function () {
+      var b = this; b.disabled = true; b.textContent = "…";
+      loadHistory(false).then(load).then(function (ok) {
+        b.disabled = false; b.textContent = "↻";
+        toast(ok ? "已更新" : "連不上網路，稍後再試");
+      });
+    });
+
+    loadHistory(true).then(load);
+    setInterval(function () { if (document.visibilityState === "visible") { loadHistory(false); load(); } }, 60000);
+  }
+
+  if (viaGas && google.script.url) {
+    google.script.url.getLocation(function (loc) {
+      loc && loc.parameter && loc.parameter.view === "stats" ? startStats() : startCaptain();
+    });
+  } else if (new URLSearchParams(location.search).get("view") === "stats" || location.hash === "#stats") startStats();
+  else startCaptain();
+})();
 </script>
 </body>
 </html>
