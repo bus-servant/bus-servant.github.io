@@ -459,7 +459,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
       var line = $("#eventLine");
       if (st) {
         line.hidden = false;
-        line.innerHTML = (st.event ? '<b class="evname evbanner">' + esc(st.event) + '</b>' : '') +
+        // 車長頁不顯示聚會名稱，只顯示今天的總數。
+        line.innerHTML =
           '<span>今天全部：</span>' + st.trips + ' 班 · ' + st.total + ' 人次';
       }
       var planned = st && (st.out || st.back);
