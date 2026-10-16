@@ -11,7 +11,7 @@
 <title>Bus Servant | 學生車長</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600;700&family=Open+Sans:wght@700;800&family=Noto+Sans+TC:wght@300;400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600;700&family=Open+Sans:wght@700;800&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@400;600&display=swap">
 <style>
 /* Layout: one screen — teal brand band like the Change Life Church mark, teal count plate, thumb buttons, confirm bar, everyone's departures below */
 :root{
@@ -144,6 +144,17 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .spin{width:34px;height:34px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--teal);animation:spin .9s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.spin{animation-duration:2.5s}}
+/* 抵達後的感謝畫面 */
+.thanks{min-height:calc(100dvh - 150px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:10px 6px 24px}
+.thanks .mark{width:76px;height:76px;border-radius:50%;background:#2F7A4E;color:#F2EFE6;display:grid;place-items:center;font-size:2.4rem;line-height:1;
+  box-shadow:0 0 0 8px rgba(47,122,78,.15)}
+.thanks h2{margin:0;font-size:1.9rem;font-weight:700;color:var(--teal);letter-spacing:.12em;padding-left:.12em}
+.thanks .trip-sum{margin:0;color:var(--muted);font-size:.9rem;font-variant-numeric:tabular-nums}
+.thanks blockquote{margin:6px 0 0;padding:18px 18px 16px;background:var(--surface);border:1px solid var(--line);border-radius:14px;max-width:24em;position:relative}
+.thanks blockquote::before{content:"";position:absolute;left:50%;top:-1px;width:48px;height:3px;margin-left:-24px;background:var(--teal);border-radius:0 0 3px 3px}
+.thanks blockquote p{margin:0;font-family:"Noto Serif TC","Songti TC","PMingLiU",serif;font-size:1.15rem;line-height:1.9;color:var(--ink);letter-spacing:.05em}
+.thanks blockquote cite{display:block;margin-top:10px;font-style:normal;font-size:.85rem;color:var(--teal);letter-spacing:.2em}
+.thanks .done{min-width:60%;min-height:54px;border:0;border-radius:14px;background:var(--go);color:var(--on-go);font-size:1.15rem;font-weight:500;letter-spacing:.35em;padding-left:.35em;cursor:pointer;margin-top:4px}
 /* 行駛中卡片 */
 #goArea{display:flex;flex-direction:column;gap:10px}
 .trip{background:var(--banner);color:var(--cream);border-radius:16px;padding:14px 14px 16px;text-align:center;display:flex;flex-direction:column;gap:2px;
@@ -393,7 +404,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   var hasServer = viaGas || !!API;
   var backendMsg = "";
   // 每次更新網頁時改這個版本號，手機最下方會顯示，方便確認拿到的是不是最新版。
-  var VERSION = "2026-10-16 版本 5";
+  var VERSION = "2026-10-16 版本 6";
   document.getElementById("ver").textContent = VERSION;   // 後台設定有問題時，顯示給使用者看的說明
 
   function toast(msg) {
@@ -438,6 +449,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
     var todayStats = null;
     var asking = false, askingArrive = false, flushing = false, online = null, needPin = false;
     var pickerOpen = false, isMoving = false;
+    var thanks = null;   // 剛抵達：顯示感謝畫面，按「完成」才回到一般畫面
     var today = function () { return dayKey(new Date()); };
     if (sel && sel.date !== today()) sel = null;
 
@@ -558,8 +570,18 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
       $("#busBox").hidden = !!sel && !pickerOpen;
       $("#selBar").hidden = !sel || pickerOpen;
       if (sel) { $("#selName").textContent = busName(sel.dir, sel.bus); $("#selName").className = sel.dir === "回程" ? "back" : ""; }
-      $("#captainView").classList.toggle("transitmode", !!moving && !asking && !pickerOpen);
-      if (!captain) go.innerHTML = '<button class="go" id="go" type="button" disabled>請先輸入名字</button>';
+      $("#captainView").classList.toggle("transitmode", (!!moving && !asking && !pickerOpen) || !!thanks);
+      if (thanks) {
+        $("#captainView .plate").hidden = true; $("#captainView .pad").hidden = true;
+        $("#busBox").hidden = true; $("#selBar").hidden = true;
+      }
+      if (thanks) go.innerHTML = '<div class="thanks" role="status"><div class="mark" aria-hidden="true">✓</div>' +
+          '<h2>感謝你的服事！</h2>' +
+          '<p class="trip-sum">' + esc(thanks.bus) + (thanks.dep ? ' · ' + esc(thanks.dep) + ' → ' + esc(thanks.arr) : ' · ' + esc(thanks.arr) + ' 抵達') +
+          (thanks.count !== "" ? ' · ' + thanks.count + ' 人' : '') + '</p>' +
+          '<blockquote><p>坐寶座的說：<br>『看哪，我將一切都更新了！』</p><cite>— 啟示錄 21:5</cite></blockquote>' +
+          '<button class="done" id="thanksDone" type="button">完成</button></div>';
+      else if (!captain) go.innerHTML = '<button class="go" id="go" type="button" disabled>請先輸入名字</button>';
       else if (!sel) go.innerHTML = '<button class="go" id="go" type="button" disabled>請先選擇你的車</button>';
       else if (moving && askingArrive) go.innerHTML = '<div class="arrive-wrap"><div class="ask"><p>確定 ' + busName(sel.dir, sel.bus) + '<br>已抵達？' +
           '<small>按下後會記錄現在的時間並上傳。</small></p>' +
@@ -637,12 +659,14 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
       if (id === "pickOther") { pickerOpen = true; render(); $("#busBox").scrollIntoView({ block: "nearest" }); }
       else if (id === "arrive" && sel) { askingArrive = true; render(); $("#arrYes").focus(); }
       else if (id === "arrNo") { askingArrive = false; render(); }
+      else if (id === "thanksDone") { thanks = null; render(); window.scrollTo(0, 0); }
       else if (id === "arrYes" && sel) {
         var at = new Date();
+        var dep = departedOf(todayRows(), sel.dir, sel.bus)[0];
+        thanks = { bus: busName(sel.dir, sel.bus), dep: dep ? dep.time : "", arr: hhmm(at), count: dep ? dep.count : "" };
         history.unshift({ kind: "arrive", id: at.getTime().toString(36) + Math.random().toString(36).slice(2, 7), date: dayKey(at), time: hhmm(at),
           dir: sel.dir, bus: sel.bus, sent: false });
         LS.set("history", history);
-        toast(busName(sel.dir, sel.bus) + " " + hhmm(at) + " 已抵達");
         askingArrive = false;
         render(); flush();
       }
