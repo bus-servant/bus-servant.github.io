@@ -117,6 +117,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .ask button{min-height:56px;border-radius:12px;font-weight:700;font-size:1.05rem;cursor:pointer}
 #no{background:var(--surface);border:1px solid var(--line)}
 #yes{background:var(--go);color:var(--on-go);border:0}
+#arrYes{background:#2F7A4E;color:#F2EFE6;border:0}
+#arrNo{background:var(--surface);border:1px solid var(--line)}
+.arrive-wrap .ask{width:100%}
 
 /* 清單 */
 .hist{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
@@ -156,6 +159,20 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .go.arrive-go{background:#2F7A4E;color:#F2EFE6;letter-spacing:.2em;padding-left:.2em}
 .linkbtn{align-self:center;border:0;background:none;color:var(--muted);text-decoration:underline;text-underline-offset:3px;font-size:.85rem;min-height:32px;padding:0 8px;cursor:pointer}
 @media (prefers-reduced-motion:reduce){.trip .tstate::before{animation:none}}
+/* 行駛中模式：整個畫面只留一個大的「抵達」按鈕 */
+.transitmode .me,.transitmode #eventLine,.transitmode #stepBar,.transitmode .hist{display:none!important}
+.arrive-wrap{min-height:calc(100dvh - 140px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:8px 0 20px}
+.arrive-wrap .tlbl{font-size:1rem;letter-spacing:.35em;padding-left:.35em;color:var(--teal);font-weight:500}
+.arrive-wrap .tstate{display:flex;align-items:center;justify-content:center;gap:10px;font-size:1.05rem;color:var(--wait);font-weight:700;letter-spacing:.15em}
+.arrive-wrap .tstate::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--wait);animation:pulse 1.6s infinite}
+.arrive-wrap .tstate b{font-family:var(--num);font-size:1.5rem;font-weight:600;letter-spacing:0;padding-top:.15em}
+.bigarrive{width:min(64vw,250px);aspect-ratio:1;max-width:100%;border-radius:50%;border:0;cursor:pointer;margin:10px 0;
+  background:#2F7A4E;color:#F2EFE6;font-size:2.6rem;font-weight:700;letter-spacing:.3em;padding-left:.3em;
+  box-shadow:0 0 0 10px rgba(47,122,78,.18),0 0 0 22px rgba(47,122,78,.08),0 10px 24px rgba(15,53,55,.25);touch-action:manipulation}
+.bigarrive small{display:block;font-size:.95rem;font-weight:400;letter-spacing:.15em;padding-left:.15em;margin-top:6px;opacity:.85}
+.bigarrive:active{transform:scale(.97)}
+.arrive-wrap .tmeta{color:var(--muted);font-size:.95rem;font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){.arrive-wrap .tstate::before{animation:none}.bigarrive:active{transform:none}}
 .transit{margin:0 0 10px;text-align:center;color:var(--wait);font-weight:500;letter-spacing:.1em;background:var(--surface);border:2px dashed var(--wait);border-radius:14px;padding:12px;font-size:1rem;line-height:1.6}
 .transit b{display:block;font-size:1.3rem;letter-spacing:.2em}
 .hist .c{text-align:right;white-space:nowrap;font-weight:700}
@@ -535,24 +552,24 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
       $("#captainView .plate").hidden = !!moving && !asking;
       $("#captainView .pad").hidden = !!moving && !asking;
       $("#busBox").hidden = !!moving && !asking && !pickerOpen;
+      $("#captainView").classList.toggle("transitmode", !!moving && !asking && !pickerOpen);
       var step = !sel ? 1 : moving && !asking ? 3 : 2;
       document.querySelectorAll("#stepBar li").forEach(function (li, i) {
         li.className = i + 1 === step ? "cur" : i + 1 < step ? "done" : "";
       });
       if (!captain) go.innerHTML = '<button class="go" id="go" type="button" disabled>請先輸入名字</button>';
       else if (!sel) go.innerHTML = '<button class="go" id="go" type="button" disabled>請先選擇你的車</button>';
-      else if (moving && askingArrive) go.innerHTML = '<div class="ask"><p>確定 ' + busName(sel.dir, sel.bus) + '<br>已抵達？' +
+      else if (moving && askingArrive) go.innerHTML = '<div class="arrive-wrap"><div class="ask"><p>確定 ' + busName(sel.dir, sel.bus) + '<br>已抵達？' +
           '<small>按下後會記錄現在的時間並上傳。</small></p>' +
-          '<div class="row"><button id="arrNo" type="button">取消</button><button id="arrYes" type="button">確定抵達</button></div></div>';
+          '<div class="row"><button id="arrNo" type="button">取消</button><button id="arrYes" type="button">確定抵達</button></div></div></div>';
       else if (moving && !asking) {
         var startMs = moving.ms || idMs(moving.id);
         var mins = startMs ? Math.max(0, Math.floor((Date.now() - startMs) / 60000)) : null;
-        go.innerHTML = '<div class="trip" aria-live="polite"><div class="tlbl">' + busName(sel.dir, sel.bus) + '</div>' +
-          '<div class="tstate">行駛中</div>' +
-          (mins != null ? '<div class="tclock"><b>' + mins + '</b><span>分鐘</span></div>' : '') +
-          '<div class="tmeta">' + esc(moving.time) + ' 發車 · ' + moving.count + ' 人</div></div>' +
-          '<button class="go arrive-go" id="arrive" type="button">到站了，確認抵達</button>' +
-          (pickerOpen ? '' : '<button class="linkbtn" id="pickOther" type="button">換別台車</button>');
+        go.innerHTML = '<div class="arrive-wrap" aria-live="polite"><div class="tlbl">' + busName(sel.dir, sel.bus) + '</div>' +
+          '<div class="tstate">行駛中' + (mins != null ? ' · <b>' + mins + '</b> 分鐘' : '') + '</div>' +
+          '<button class="bigarrive" id="arrive" type="button">抵達<small>到站時按這裡</small></button>' +
+          '<div class="tmeta">' + esc(moving.time) + ' 發車 · ' + moving.count + ' 人</div>' +
+          (pickerOpen ? '' : '<button class="linkbtn" id="pickOther" type="button">換別台車</button>') + '</div>';
       }
       else if (asking) go.innerHTML = '<div class="ask"><p>確定 ' + busName(sel.dir, sel.bus) + '<br>' + count + ' 人發車？' +
           '<small>按下後會記錄現在的時間並上傳，人數歸零。</small>' +
@@ -612,7 +629,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
     $("#minus").addEventListener("click", function () { if (count > 0) { count -= 1; LS.set("count", count); buzz(); render(); } });
 
     $("#goArea").addEventListener("click", function (e) {
-      var id = e.target.id;
+      var btn = e.target.closest("button");
+      var id = btn ? btn.id : "";
       if (id === "pickOther") { pickerOpen = true; render(); $("#busBox").scrollIntoView({ block: "nearest" }); }
       else if (id === "arrive" && sel) { askingArrive = true; render(); $("#arrYes").focus(); }
       else if (id === "arrNo") { askingArrive = false; render(); }
