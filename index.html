@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#027F85">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bus Servant">
+<title>Bus Servant | 學生車長</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23027F85'/%3E%3Crect x='14' y='12' width='36' height='34' rx='7' fill='none' stroke='%23F2EFE6' stroke-width='4'/%3E%3Cpath d='M14 30h36' stroke='%23F2EFE6' stroke-width='4'/%3E%3Ccircle cx='23' cy='38' r='2.5' fill='%23F2EFE6'/%3E%3Ccircle cx='41' cy='38' r='2.5' fill='%23F2EFE6'/%3E%3Cpath d='M22 46v6M42 46v6' stroke='%23F2EFE6' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  /* 外框：整頁顯示 Google Apps Script 的 Bus Servant，嵌入時 Google 不會顯示「由 Apps Script 使用者建立」的提示。 */
+  html, body { margin: 0; height: 100%; background: #F2EFE6; }
+  @media (prefers-color-scheme: dark) { html, body { background: #0B2527; } }
+  .loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    font: 300 1rem/1.5 "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+    letter-spacing: .3em; color: #027F85; }
+  iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: transparent; }
+</style>
+</head>
+<body>
+<div class="loading">載入中…</div>
+<iframe id="app" title="Bus Servant"></iframe>
+<script>
+  // 把這個網址後面的參數（例如 ?view=stats）原樣帶給 Apps Script。
+  var EXEC = "https://script.google.com/macros/s/AKfycbyA2pNgAHCbzmB8FC_ax0t45ydEddqmwhqvWc24SzsQQv9wmmxa75k1aIUs19cWqh-C/exec";
+  var q = new URLSearchParams(location.search);
+  if (q.get("view") === "stats") document.title = "Bus Servant | 搭車統計";
+  document.getElementById("app").src = EXEC + location.search;
+</script>
+</body>
+</html>
