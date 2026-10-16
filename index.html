@@ -141,6 +141,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .tag.back{color:var(--back)}
 .empty{color:var(--muted);font-size:.95rem;padding:6px 0}
 .note{color:var(--muted);font-size:.9rem;text-align:center;margin:0}
+.note:empty{display:none}
+.warnnote{background:var(--surface);border:1px solid var(--wait);color:var(--wait);border-radius:12px;padding:10px 12px;text-align:left;font-size:.9rem;line-height:1.5}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(20px,env(safe-area-inset-bottom,0px));background:var(--teal);color:var(--cream);
   padding:10px 18px;border-radius:999px;font-weight:700;width:max-content;max-width:calc(100% - 32px);z-index:5}
 
@@ -216,6 +218,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
     <button class="refresh" id="refreshBtn" type="button" aria-label="更新" title="更新">↻</button></div>
   </div>
 
+  <p class="note warnnote" id="note"></p>
   <div class="me" id="meBar" hidden><span>車長：<b id="meName"></b></span><button id="meEdit" type="button">更改</button></div>
   <form class="namebox" id="nameForm" hidden autocomplete="off">
     <label for="nameInput"><b>請輸入你的名字</b><br>大家會在記錄裡看到是誰發的車。每支手機只需輸入一次。</label>
@@ -252,7 +255,6 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
     <h2>今天大家的發車記錄</h2>
     <ul id="list"></ul>
   </section>
-  <p class="note" id="note"></p>
 </div>
 
 <div class="app" id="statsView" hidden>
@@ -341,6 +343,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   var API = "https://script.google.com/macros/s/AKfycbyA2pNgAHCbzmB8FC_ax0t45ydEddqmwhqvWc24SzsQQv9wmmxa75k1aIUs19cWqh-C/exec";
   var viaGas = !!(window.google && google.script && google.script.run);
   var hasServer = viaGas || !!API;
+  var backendMsg = "";   // 後台設定有問題時，顯示給使用者看的說明
 
   function toast(msg) {
     var t = $("#toast"); t.textContent = msg; t.hidden = false;
@@ -350,8 +353,16 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
     if (!viaGas) {
       // 純文字 POST 不會觸發 CORS 預檢；Apps Script 會轉址到可跨網域讀取的 JSON。
       return fetch(API, { method: "POST", body: JSON.stringify(req), redirect: "follow" })
-        .then(function (res) { return res.json(); })
-        .then(function (r) {
+        .then(function (res) { return res.text(); })
+        .then(function (t) {
+          var r;
+          try { r = JSON.parse(t); } catch (e) {
+            // 收到的是 Google 的錯誤頁，不是資料：通常是 Apps Script 還沒部署含 doPost 的新版本。
+            backendMsg = /doPost/.test(t) ? "後台還沒更新：請在 Apps Script 按「部署 → 管理部署作業 → 編輯 → 新版本 → 部署」。記錄都存在手機裡，更新後會自動上傳。"
+              : "後台回應異常，請稍後再試。記錄都存在手機裡，會自動補傳。";
+            throw { code: "bad_backend" };
+          }
+          backendMsg = "";
           if (r && r.ok) return r;
           throw { code: r ? r.code : "error" };
         }, function () { throw { code: "network" }; });
@@ -513,7 +524,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
       else txt.textContent = online === false ? "離線" : "連線中";
       txt.parentNode.classList.toggle("quiet", dot.classList.contains("ok"));
       txt.parentNode.title = txt.textContent;
-      $("#note").textContent = hasServer ? (waiting && online === false ? "沒有訊號也沒關係，記錄已存在手機裡，有訊號時會自動上傳。" : "")
+      $("#note").textContent = backendMsg ? backendMsg : hasServer ? (waiting && online === false ? "沒有訊號也沒關係，記錄已存在手機裡，有訊號時會自動上傳。" : "")
         : "這是預覽版，記錄只存在這支手機。部署到 Google 後才會上傳。";
     }
 
@@ -697,6 +708,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
       }, function () {
         $("#sDot").className = "dot wait";
         $("#sUpdated").textContent = "無法載入，稍後重試";
+        if (backendMsg) toast(backendMsg.split("：")[0]);
         return false;
       });
     }
