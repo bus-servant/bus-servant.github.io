@@ -144,14 +144,6 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .spin{width:34px;height:34px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--teal);animation:spin .9s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.spin{animation-duration:2.5s}}
-/* 步驟提示 */
-.stepbar{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;counter-reset:st}
-.stepbar li{counter-increment:st;display:flex;align-items:center;justify-content:center;gap:5px;font-size:.78rem;color:var(--muted);padding:6px 4px;border-radius:999px;background:var(--surface);border:1px solid var(--line);white-space:nowrap}
-.stepbar li::before{content:counter(st);width:18px;height:18px;flex:0 0 18px;border-radius:50%;display:grid;place-items:center;font-size:.72rem;line-height:1;background:var(--line);color:var(--ink);font-family:var(--num);padding-top:2px}
-.stepbar li.cur{background:var(--teal);color:var(--cream);border-color:var(--teal);font-weight:700}
-.stepbar li.cur::before{background:var(--cream);color:var(--teal)}
-.stepbar li.done{color:var(--teal)}
-.stepbar li.done::before{content:"✓";background:var(--teal);color:var(--cream);font-family:var(--body);padding-top:0}
 /* 行駛中卡片 */
 #goArea{display:flex;flex-direction:column;gap:10px}
 .trip{background:var(--banner);color:var(--cream);border-radius:16px;padding:14px 14px 16px;text-align:center;display:flex;flex-direction:column;gap:2px;
@@ -168,7 +160,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .linkbtn{align-self:center;border:0;background:none;color:var(--muted);text-decoration:underline;text-underline-offset:3px;font-size:.85rem;min-height:32px;padding:0 8px;cursor:pointer}
 @media (prefers-reduced-motion:reduce){.trip .tstate::before{animation:none}}
 /* 行駛中模式：整個畫面只留一個大的「抵達」按鈕 */
-.transitmode .me,.transitmode #eventLine,.transitmode #stepBar,.transitmode .hist{display:none!important}
+.transitmode .me,.transitmode #eventLine,.transitmode .hist{display:none!important}
 .arrive-wrap{min-height:calc(100dvh - 140px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:8px 0 20px}
 .arrive-wrap .tlbl{font-size:1rem;letter-spacing:.35em;padding-left:.35em;color:var(--teal);font-weight:500}
 .arrive-wrap .tstate{display:flex;align-items:center;justify-content:center;gap:10px;font-size:1.05rem;color:var(--wait);font-weight:700;letter-spacing:.15em}
@@ -280,8 +272,6 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   </div>
 
   <p class="event" id="eventLine" hidden></p>
-
-  <ol class="stepbar" id="stepBar" aria-label="步驟"><li>選車</li><li>數人數・發車</li><li>到站確認</li></ol>
 
   <section class="buses" id="busBox">
     <h2>選擇你負責的車</h2>
@@ -398,7 +388,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   var hasServer = viaGas || !!API;
   var backendMsg = "";
   // 每次更新網頁時改這個版本號，手機最下方會顯示，方便確認拿到的是不是最新版。
-  var VERSION = "2026-10-16 版本 3";
+  var VERSION = "2026-10-16 版本 4";
   document.getElementById("ver").textContent = VERSION;   // 後台設定有問題時，顯示給使用者看的說明
 
   function toast(msg) {
@@ -568,10 +558,6 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
       $("#captainView .pad").hidden = !!moving && !asking;
       $("#busBox").hidden = !!moving && !asking && !pickerOpen;
       $("#captainView").classList.toggle("transitmode", !!moving && !asking && !pickerOpen);
-      var step = !sel ? 1 : moving && !asking ? 3 : 2;
-      document.querySelectorAll("#stepBar li").forEach(function (li, i) {
-        li.className = i + 1 === step ? "cur" : i + 1 < step ? "done" : "";
-      });
       if (!captain) go.innerHTML = '<button class="go" id="go" type="button" disabled>請先輸入名字</button>';
       else if (!sel) go.innerHTML = '<button class="go" id="go" type="button" disabled>請先選擇你的車</button>';
       else if (moving && askingArrive) go.innerHTML = '<div class="arrive-wrap"><div class="ask"><p>確定 ' + busName(sel.dir, sel.bus) + '<br>已抵達？' +
