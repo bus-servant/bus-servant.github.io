@@ -149,7 +149,6 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .thanks .mark{width:76px;height:76px;border-radius:50%;background:#2F7A4E;color:#F2EFE6;display:grid;place-items:center;font-size:2.4rem;line-height:1;
   box-shadow:0 0 0 8px rgba(47,122,78,.15)}
 .thanks h2{margin:0;font-size:1.75rem;font-weight:700;color:var(--teal);letter-spacing:.1em;padding-left:.1em;line-height:1.35;overflow-wrap:anywhere}
-.thanks h2 .who{color:var(--ink)}
 .thanks .trip-sum{margin:0;color:var(--muted);font-size:.9rem;font-variant-numeric:tabular-nums}
 .thanks blockquote{margin:6px 0 0;padding:18px 18px 16px;background:var(--surface);border:1px solid var(--line);border-radius:14px;max-width:24em;position:relative}
 .thanks blockquote::before{content:"";position:absolute;left:50%;top:-1px;width:48px;height:3px;margin-left:-24px;background:var(--teal);border-radius:0 0 3px 3px}
@@ -405,7 +404,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   var hasServer = viaGas || !!API;
   var backendMsg = "";
   // 每次更新網頁時改這個版本號，手機最下方會顯示，方便確認拿到的是不是最新版。
-  var VERSION = "2026-10-16 版本 7";
+  var VERSION = "2026-10-16 版本 8";
   document.getElementById("ver").textContent = VERSION;   // 後台設定有問題時，顯示給使用者看的說明
 
   function toast(msg) {
@@ -577,7 +576,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
         $("#busBox").hidden = true; $("#selBar").hidden = true;
       }
       if (thanks) go.innerHTML = '<div class="thanks" role="status"><div class="mark" aria-hidden="true">✓</div>' +
-          '<h2>感謝 <span class="who">' + (esc(captain) || '你') + '</span> 的服事！</h2>' +
+          '<h2>感謝' + (esc(captain) || '你') + '的服事！</h2>' +
           '<p class="trip-sum">' + esc(thanks.bus) + (thanks.dep ? ' · ' + esc(thanks.dep) + ' → ' + esc(thanks.arr) : ' · ' + esc(thanks.arr) + ' 抵達') +
           (thanks.count !== "" ? ' · ' + thanks.count + ' 人' : '') + '</p>' +
           '<blockquote><p>坐寶座的說：<br>『看哪，我將一切都更新了！』</p><cite>— 啟示錄 21:5</cite></blockquote>' +
