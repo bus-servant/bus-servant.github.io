@@ -408,7 +408,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   var hasServer = viaGas || !!API;
   var backendMsg = "";
   // 每次更新網頁時改這個版本號，手機最下方會顯示，方便確認拿到的是不是最新版。
-  var VERSION = "2026-10-16 版本 11";
+  var VERSION = "2026-10-16 版本 12";
   document.getElementById("ver").textContent = VERSION;   // 後台設定有問題時，顯示給使用者看的說明
 
   function toast(msg) {
@@ -467,7 +467,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
         : { action: "add", pin: LS.get("pin", ""), record: { id: next.id, date: next.date, time: next.time, count: next.count,
             captain: next.captain || captain, dir: next.dir || "", bus: next.bus || "" } };
       run(req).then(function () {
-        next.sent = true; LS.set("history", history); online = true; flushing = false; refreshToday(); flush();
+        next.sent = true; next.sentAt = Date.now(); LS.set("history", history); online = true; flushing = false; refreshToday(); flush();
       }, function (e) {
         flushing = false;
         if (e.code === "bad_pin") { needPin = true; $("#pinBox").hidden = false; }
@@ -481,13 +481,17 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 
     function refreshToday() {
       if (!hasServer) return Promise.resolve(false);
+      var askedAt = Date.now();
       return getStats(today()).then(function (d) {
         todayStats = d;
         LS.set("todayStats", { date: today(), data: d });
         // 記下哪些自己的發車已經出現在伺服器上；之後伺服器沒有的（例如被管理者刪除）就不再顯示。
         var ids = {}, changed = false;
         d.departures.forEach(function (x) { ids[x.id] = true; });
-        history.forEach(function (h) { if (ids[h.id] && !h.seen) { h.seen = true; changed = true; } });
+        // 上傳完成之後才查的統計裡還是沒有它，表示已經被刪掉（或是舊版留下的記錄），也當作看過、不再顯示。
+        history.forEach(function (h) {
+          if (h.sent && !h.seen && (ids[h.id] || !h.sentAt || h.sentAt < askedAt)) { h.seen = true; changed = true; }
+        });
         if (changed) LS.set("history", history);
         render(); return true;
       }, function () { return false; });
