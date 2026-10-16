@@ -46,10 +46,13 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .top{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--teal);color:var(--cream);border-radius:14px;padding:10px 10px 10px 16px}
 .top{flex-wrap:wrap;row-gap:8px}
 .top h1{margin:0;display:flex;align-items:center;gap:10px;font-weight:300;min-width:0;flex-shrink:0}
-@media (max-width:400px){.top h1 .en{letter-spacing:.18em}.top h1 .zh{letter-spacing:.12em;padding-left:9px}}
 .top h1 .en{font-family:var(--brand);font-size:.98rem;letter-spacing:.24em;line-height:1;padding-top:.15em;white-space:nowrap}
 .top h1 .en b{font-weight:700;letter-spacing:.2em}
-.top h1 .zh{font-family:var(--body);font-weight:300;font-size:.95rem;letter-spacing:.24em;border-left:1px solid rgba(242,239,230,.7);padding-left:12px;white-space:nowrap}
+@media (max-width:400px){.top{gap:8px;padding-left:14px}.top h1 .en{letter-spacing:.16em}.top h1 .en b{letter-spacing:.14em}}
+/* 車長／統計 切換：標題列裡的小膠囊，目前這頁是實心 */
+.tabs{display:flex;border:1px solid rgba(242,239,230,.6);border-radius:999px;padding:2px;flex-shrink:0}
+.tabs button{border:0;background:transparent;color:var(--cream);font-size:.85rem;font-weight:400;letter-spacing:.06em;padding:4px 9px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.tabs button[aria-current="page"]{background:var(--cream);color:var(--teal);font-weight:700}
 .sync{display:flex;align-items:center;gap:6px;font-size:.8rem;color:rgba(242,239,230,.85);white-space:nowrap}
 .dot{width:9px;height:9px;border-radius:50%;background:rgba(242,239,230,.4)}
 .dot.ok{background:#7FE0A8} .dot.wait{background:#F5C26B}
@@ -268,7 +271,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 <body>
 <div class="app booting" id="captainView">
   <div class="top">
-    <h1><span class="en">BUS <b>SERVANT</b></span><span class="zh">學生車長</span></h1>
+    <h1><span class="en">BUS <b>SERVANT</b></span></h1>
+    <nav class="tabs" aria-label="切換頁面"><button type="button" data-go="captain" aria-current="page">車長</button><button type="button" data-go="stats">統計</button></nav>
     <div class="tright"><div class="sync" aria-live="polite"><span class="dot" id="dot"></span><span id="syncTxt">連線中</span></div>
     <button class="refresh" id="refreshBtn" type="button" aria-label="更新" title="更新">↻</button></div>
   </div>
@@ -315,7 +319,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 
 <div class="app booting" id="statsView" hidden>
   <div class="top">
-    <h1><span class="en">BUS <b>SERVANT</b></span><span class="zh">統計</span></h1>
+    <h1><span class="en">BUS <b>SERVANT</b></span></h1>
+    <nav class="tabs" aria-label="切換頁面"><button type="button" data-go="captain">車長</button><button type="button" data-go="stats" aria-current="page">統計</button></nav>
     <div class="tright"><div class="sync quiet" aria-live="polite"><span class="dot" id="sDot"></span><span id="sUpdated">載入中</span></div>
     <button class="refresh" id="sRefresh" type="button" aria-label="更新" title="更新">↻</button></div>
   </div>
@@ -403,7 +408,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   var hasServer = viaGas || !!API;
   var backendMsg = "";
   // 每次更新網頁時改這個版本號，手機最下方會顯示，方便確認拿到的是不是最新版。
-  var VERSION = "2026-10-16 版本 10";
+  var VERSION = "2026-10-16 版本 11";
   document.getElementById("ver").textContent = VERSION;   // 後台設定有問題時，顯示給使用者看的說明
 
   function toast(msg) {
@@ -702,6 +707,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
     setTimeout(boot, 10000);
     refreshToday().then(boot, boot);
     setInterval(function () { if (document.visibilityState === "visible") refreshToday(); }, 30000);
+    onShow.captain = function () { refreshToday(); render(); };
     setInterval(function () { if (isMoving && !askingArrive && document.visibilityState === "visible") render(); }, 20000);
     if (hasServer) run({ action: "ping", pin: LS.get("pin", "") }).then(function () { online = true; render(); flush(); }, function (e) {
       if (e.code === "bad_pin") { needPin = true; $("#pinBox").hidden = false; } else online = false;
@@ -711,9 +717,6 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 
   /* =================== 統計頁（網址加上 ?view=stats） =================== */
   function startStats() {
-    $("#captainView").hidden = true;
-    $("#statsView").hidden = false;
-    document.title = "Bus Servant | 搭車統計";
     var list = [];          // 每一天（有聚會或有發車），新的在前
     var cur = "";           // 目前顯示的日期
     var dateText = function (d) {
@@ -961,14 +964,33 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
     setTimeout(reveal, 10000);
     loadHistory(true).then(load).then(reveal, reveal);
     setInterval(function () { if (document.visibilityState === "visible") { loadHistory(false); load(); } }, 60000);
+    onShow.stats = function () { loadHistory(false); load(); };
   }
 
+  /* =================== 車長頁／統計頁切換（同一個網址，按標題列的「車長｜統計」） =================== */
+  // 兩頁都只在第一次打開時載入；之後切換只是顯示／隱藏，切回來時順便更新資料。
+  var onShow = {}, started = {};
+  function show(v, first) {
+    $("#captainView").hidden = v !== "captain";
+    $("#statsView").hidden = v !== "stats";
+    document.title = v === "stats" ? "Bus Servant | 搭車統計" : "Bus Servant | 學生車長";
+    if (!started[v]) { started[v] = true; v === "stats" ? startStats() : startCaptain(); }
+    else if (onShow[v]) onShow[v]();
+    if (!first) {
+      window.scrollTo(0, 0);
+      // 網址跟著換，重新整理或分享時會停在同一頁。
+      if (!viaGas && history.replaceState) history.replaceState(null, "", v === "stats" ? "?view=stats" : location.pathname);
+    }
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest(".tabs [data-go]");
+    if (b && b.getAttribute("aria-current") !== "page") show(b.dataset.go);
+  });
   if (viaGas && google.script.url) {
     google.script.url.getLocation(function (loc) {
-      loc && loc.parameter && loc.parameter.view === "stats" ? startStats() : startCaptain();
+      show(loc && loc.parameter && loc.parameter.view === "stats" ? "stats" : "captain", true);
     });
-  } else if (new URLSearchParams(location.search).get("view") === "stats" || location.hash === "#stats") startStats();
-  else startCaptain();
+  } else show(new URLSearchParams(location.search).get("view") === "stats" || location.hash === "#stats" ? "stats" : "captain", true);
 })();
 </script>
 </body>
