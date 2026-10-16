@@ -138,6 +138,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .go.arrive{background:var(--surface);color:var(--teal);border:2px solid var(--teal)}
 /* 開啟時先等資料載入完，再一次顯示正確的畫面 */
 .loadbox{display:none}
+.ver{margin:8px 0 0;text-align:center;font-size:.7rem;color:var(--muted);opacity:.7;letter-spacing:.05em}
 .app.booting > *:not(.top):not(.loadbox){display:none!important}
 .app.booting .loadbox{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-height:60vh;color:var(--teal);font-size:.95rem;letter-spacing:.3em;padding-left:.3em}
 .spin{width:34px;height:34px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--teal);animation:spin .9s linear infinite}
@@ -369,6 +370,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   </section>
   <p class="note">這一頁每分鐘自動更新。聚會名稱、台數和金額可以按上方的按鈕填寫，也可以直接改試算表的「聚會」分頁。</p>
 </div>
+<p class="ver" id="ver"></p>
 <div class="toast" id="toast" hidden role="status"></div>
 
 <script>
@@ -394,7 +396,10 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   var API = "https://script.google.com/macros/s/AKfycbyA2pNgAHCbzmB8FC_ax0t45ydEddqmwhqvWc24SzsQQv9wmmxa75k1aIUs19cWqh-C/exec";
   var viaGas = !!(window.google && google.script && google.script.run);
   var hasServer = viaGas || !!API;
-  var backendMsg = "";   // 後台設定有問題時，顯示給使用者看的說明
+  var backendMsg = "";
+  // 每次更新網頁時改這個版本號，手機最下方會顯示，方便確認拿到的是不是最新版。
+  var VERSION = "2026-10-16 版本 3";
+  document.getElementById("ver").textContent = VERSION;   // 後台設定有問題時，顯示給使用者看的說明
 
   function toast(msg) {
     var t = $("#toast"); t.textContent = msg; t.hidden = false;
