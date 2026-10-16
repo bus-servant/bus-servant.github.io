@@ -136,6 +136,13 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .hist .arr{display:block;font-size:.85rem;font-weight:500;color:var(--ok)}
 .hist .arr.moving{color:var(--wait)}
 .go.arrive{background:var(--surface);color:var(--teal);border:2px solid var(--teal)}
+/* 開啟時先等資料載入完，再一次顯示正確的畫面 */
+.loadbox{display:none}
+.app.booting > *:not(.top):not(.loadbox){display:none!important}
+.app.booting .loadbox{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-height:60vh;color:var(--teal);font-size:.95rem;letter-spacing:.3em;padding-left:.3em}
+.spin{width:34px;height:34px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--teal);animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation-duration:2.5s}}
 /* 步驟提示 */
 .stepbar{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;counter-reset:st}
 .stepbar li{counter-increment:st;display:flex;align-items:center;justify-content:center;gap:5px;font-size:.78rem;color:var(--muted);padding:6px 4px;border-radius:999px;background:var(--surface);border:1px solid var(--line);white-space:nowrap}
@@ -251,12 +258,13 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 </style>
 </head>
 <body>
-<div class="app" id="captainView">
+<div class="app booting" id="captainView">
   <div class="top">
     <h1><span class="en">BUS <b>SERVANT</b></span><span class="zh">學生車長</span></h1>
     <div class="tright"><div class="sync" aria-live="polite"><span class="dot" id="dot"></span><span id="syncTxt">連線中</span></div>
     <button class="refresh" id="refreshBtn" type="button" aria-label="更新" title="更新">↻</button></div>
   </div>
+  <div class="loadbox" role="status"><span class="spin"></span>載入中…</div>
 
   <p class="note warnnote" id="note"></p>
   <div class="me" id="meBar" hidden><span>車長：<b id="meName"></b></span><button id="meEdit" type="button">更改</button></div>
@@ -299,12 +307,13 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   </section>
 </div>
 
-<div class="app" id="statsView" hidden>
+<div class="app booting" id="statsView" hidden>
   <div class="top">
     <h1><span class="en">BUS <b>SERVANT</b></span><span class="zh">統計</span></h1>
     <div class="tright"><div class="sync quiet" aria-live="polite"><span class="dot" id="sDot"></span><span id="sUpdated">載入中</span></div>
     <button class="refresh" id="sRefresh" type="button" aria-label="更新" title="更新">↻</button></div>
   </div>
+  <div class="loadbox" role="status"><span class="spin"></span>載入中…</div>
   <div class="pick">
     <label for="yearSel">年份<select id="yearSel"></select></label>
     <label for="eventSel">聚會<select id="eventSel"></select></label>
@@ -458,6 +467,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
       if (!hasServer) return Promise.resolve(false);
       return getStats(today()).then(function (d) {
         todayStats = d;
+        LS.set("todayStats", { date: today(), data: d });
         // 記下哪些自己的發車已經出現在伺服器上；之後伺服器沒有的（例如被管理者刪除）就不再顯示。
         var ids = {}, changed = false;
         d.departures.forEach(function (x) { ids[x.id] = true; });
@@ -658,8 +668,21 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
       }
     });
 
-    render();
-    refreshToday();
+    // 先等今天的資料（台數、大家的發車）載入完，再一次顯示畫面，避免一開始顯示錯的車數。
+    // 沒有網路時改用這支手機上次存的資料；最多等 10 秒。
+    var booted = false;
+    function boot() {
+      if (booted) return;
+      booted = true;
+      if (!todayStats) {
+        var cached = LS.get("todayStats", null);
+        if (cached && cached.date === today()) todayStats = cached.data;
+      }
+      render();
+      $("#captainView").classList.remove("booting");
+    }
+    setTimeout(boot, 10000);
+    refreshToday().then(boot, boot);
     setInterval(function () { if (document.visibilityState === "visible") refreshToday(); }, 30000);
     setInterval(function () { if (isMoving && !askingArrive && document.visibilityState === "visible") render(); }, 20000);
     if (hasServer) run({ action: "ping", pin: LS.get("pin", "") }).then(function () { online = true; render(); flush(); }, function (e) {
@@ -915,7 +938,10 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
       });
     });
 
-    loadHistory(true).then(load);
+    // 年份、聚會和數字都載入好之後才一次顯示（最多等 10 秒）。
+    var reveal = function () { $("#statsView").classList.remove("booting"); };
+    setTimeout(reveal, 10000);
+    loadHistory(true).then(load).then(reveal, reveal);
     setInterval(function () { if (document.visibilityState === "visible") { loadHistory(false); load(); } }, 60000);
   }
 
