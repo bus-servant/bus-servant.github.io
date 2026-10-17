@@ -408,8 +408,39 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   var hasServer = viaGas || !!API;
   var backendMsg = "";
   // 每次更新網頁時改這個版本號，手機最下方會顯示，方便確認拿到的是不是最新版。
-  var VERSION = "2026-10-16 版本 12";
+  var VERSION = "2026-10-16 版本 13";
   document.getElementById("ver").textContent = VERSION;   // 後台設定有問題時，顯示給使用者看的說明
+
+  // 自動更新：LINE 等 App 內的瀏覽器會把舊網頁存很久。打開時（以及切回這個畫面時）
+  // 不經暫存再抓一次網頁，版本號不同就自動重新載入。人數、選的車、記錄都存在手機裡，不會不見。
+  (function () {
+    if (viaGas || !/^https?:$/.test(location.protocol) || !window.fetch) return;
+    var q = new URLSearchParams(location.search);
+    if (q.has("v") && history.replaceState) {   // 自動加的 ?v= 用完就拿掉，網址保持乾淨
+      q.delete("v"); var rest = q.toString();
+      history.replaceState(null, "", location.pathname + (rest ? "?" + rest : "") + location.hash);
+    }
+    var lastCheck = 0;
+    function check() {
+      if (Date.now() - lastCheck < 60000) return;
+      lastCheck = Date.now();
+      fetch(location.pathname + "?nocache=" + Date.now(), { cache: "no-store" })
+        .then(function (r) { return r.ok ? r.text() : ""; })
+        .then(function (t) {
+          var m = /var VERSION = "([^"]+)"/.exec(t);
+          if (!m || m[1] === VERSION) return;
+          // 同一個新版本只自動重新載入一次，避免萬一出錯時一直重來。
+          try { if (sessionStorage.getItem("reloadedFor") === m[1]) return; sessionStorage.setItem("reloadedFor", m[1]); } catch (e) {}
+          // 正在打字（名字、聚會、代碼）時先不要重新載入，下次再說。
+          var el = document.activeElement;
+          if (el && /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) { lastCheck = 0; try { sessionStorage.removeItem("reloadedFor"); } catch (e) {} return; }
+          var p = new URLSearchParams(location.search); p.set("v", Date.now());
+          location.replace(location.pathname + "?" + p.toString() + location.hash);
+        }, function () {});
+    }
+    check();
+    document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") check(); });
+  })();
 
   function toast(msg) {
     var t = $("#toast"); t.textContent = msg; t.hidden = false;
