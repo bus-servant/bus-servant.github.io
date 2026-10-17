@@ -408,8 +408,18 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   var hasServer = viaGas || !!API;
   var backendMsg = "";
   // 每次更新網頁時改這個版本號，手機最下方會顯示，方便確認拿到的是不是最新版。
-  var VERSION = "2026-10-16 版本 13";
-  document.getElementById("ver").textContent = VERSION;   // 後台設定有問題時，顯示給使用者看的說明
+  var VERSION = "2026-10-17 版本 15";
+  // 測速：最下面一行顯示打開網頁、向後台讀取、上傳各花了幾秒（都是最近一次成功的）。
+  var timing = { open: null, read: null, upload: null };
+  function showVer() {
+    var sec = function (ms) { return (ms / 1000).toFixed(1) + " 秒"; };
+    document.getElementById("ver").textContent = VERSION +
+      (timing.open != null ? " · 打開 " + sec(timing.open) : "") +
+      (timing.read != null ? " · 讀取 " + sec(timing.read) : "") +
+      (timing.upload != null ? " · 上傳 " + sec(timing.upload) : "");
+  }
+  function opened() { if (timing.open == null && window.performance) { timing.open = performance.now(); showVer(); } }
+  showVer();
 
   // 自動更新：LINE 等 App 內的瀏覽器會把舊網頁存很久。打開時（以及切回這個畫面時）
   // 不經暫存再抓一次網頁，版本號不同就自動重新載入。人數、選的車、記錄都存在手機裡，不會不見。
@@ -447,6 +457,14 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
     clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 2400);
   }
   function run(req) {
+    var t0 = Date.now();
+    var kind = req.action === "stats" || req.action === "history" ? "read" : req.action === "add" || req.action === "arrive" ? "upload" : "";
+    return send(req).then(function (r) {
+      if (kind) { timing[kind] = Date.now() - t0; showVer(); }
+      return r;
+    });
+  }
+  function send(req) {
     if (!viaGas) {
       // 純文字 POST 不會觸發 CORS 預檢；Apps Script 會轉址到可跨網域讀取的 JSON。
       return fetch(API, { method: "POST", body: JSON.stringify(req), redirect: "follow" })
@@ -738,6 +756,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
       }
       render();
       $("#captainView").classList.remove("booting");
+      opened();
     }
     setTimeout(boot, 10000);
     refreshToday().then(boot, boot);
@@ -995,7 +1014,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
     });
 
     // 年份、聚會和數字都載入好之後才一次顯示（最多等 10 秒）。
-    var reveal = function () { $("#statsView").classList.remove("booting"); };
+    var reveal = function () { $("#statsView").classList.remove("booting"); opened(); };
     setTimeout(reveal, 10000);
     loadHistory(true).then(load).then(reveal, reveal);
     setInterval(function () { if (document.visibilityState === "visible") { loadHistory(false); load(); } }, 60000);
